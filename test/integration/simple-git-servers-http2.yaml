@@ -1,0 +1,402 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: git-servers
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: git-init-script
+  namespace: git-servers
+data:
+  setup-repos.sh: |
+    #!/bin/sh
+    set -e
+    
+    echo "Setting up git repositories..."
+    
+    # Setup team-alpha-config repository
+    mkdir -p /repos/team-alpha-config.git
+    cd /repos/team-alpha-config.git
+    git init --bare
+    
+    # Create a temporary working directory to add files
+    mkdir -p /tmp/alpha-work
+    cd /tmp/alpha-work
+    git init
+    git config user.name "Git Server"
+    git config user.email "server@git.local"
+    
+    # Add README
+    cat > README.md << 'EOF'
+    # Team Alpha GitOps Configuration
+    
+    This is a test repository for GitOps registration service integration tests.
+    
+    ## Content
+    - **Type**: basic-app
+    - **Manifests**: Located in `manifests/` directory
+    - **Purpose**: Integration testing for GitOps registration service
+    EOF
+    
+    # Add manifests
+    mkdir -p manifests
+    cat > manifests/namespace.yaml << 'EOF'
+    apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: team-alpha
+      labels:
+        team: alpha
+        managed-by: gitops-registration-service
+        project: team-alpha-config
+      annotations:
+        gitops.io/repository: http://git-servers.git-servers.svc.cluster.local/team-alpha-config.git
+        gitops.io/branch: main
+    EOF
+    
+    cat > manifests/deployment.yaml << 'EOF'
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: team-alpha-app
+      namespace: team-alpha
+      labels:
+        app: team-alpha-app
+        team: alpha
+    spec:
+      replicas: 2
+      selector:
+        matchLabels:
+          app: team-alpha-app
+      template:
+        metadata:
+          labels:
+            app: team-alpha-app
+            team: alpha
+        spec:
+          containers:
+          - name: nginx
+            image: nginx:1.21-alpine
+            ports:
+            - containerPort: 80
+            env:
+            - name: TEAM
+              value: "alpha"
+            resources:
+              requests:
+                cpu: 100m
+                memory: 128Mi
+              limits:
+                cpu: 200m
+                memory: 256Mi
+    EOF
+    
+    # Commit and push to bare repo
+    git add .
+    git commit -m "Initial commit"
+    git branch -M main
+    git remote add origin /repos/team-alpha-config.git
+    git push origin main
+    
+    # Update server info for HTTP access
+    cd /repos/team-alpha-config.git
+    git update-server-info
+    
+    # Setup team-beta-config repository
+    mkdir -p /repos/team-beta-config.git
+    cd /repos/team-beta-config.git
+    git init --bare
+    
+    # Create a temporary working directory to add files
+    mkdir -p /tmp/beta-work
+    cd /tmp/beta-work
+    git init
+    git config user.name "Git Server"
+    git config user.email "server@git.local"
+    
+    # Add README
+    cat > README.md << 'EOF'
+    # Team Beta GitOps Configuration
+    
+    This is a test repository for GitOps registration service integration tests.
+    
+    ## Content
+    - **Type**: config-app
+    - **Manifests**: Located in `manifests/` directory
+    - **Purpose**: Integration testing for GitOps registration service
+    EOF
+    
+    # Add manifests
+    mkdir -p manifests
+    cat > manifests/namespace.yaml << 'EOF'
+    apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: team-beta
+      labels:
+        team: beta
+        managed-by: gitops-registration-service
+        project: team-beta-config
+        environment: production
+      annotations:
+        gitops.io/repository: http://git-servers.git-servers.svc.cluster.local/team-beta-config.git
+        gitops.io/branch: main
+    EOF
+    
+    cat > manifests/deployment.yaml << 'EOF'
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: team-beta-app
+      namespace: team-beta
+      labels:
+        app: team-beta-app
+        team: beta
+    spec:
+      replicas: 3
+      selector:
+        matchLabels:
+          app: team-beta-app
+      template:
+        metadata:
+          labels:
+            app: team-beta-app
+            team: beta
+        spec:
+          containers:
+          - name: app
+            image: httpd:2.4-alpine
+            ports:
+            - containerPort: 80
+            env:
+            - name: TEAM
+              value: "beta"
+            - name: ENVIRONMENT
+              value: "production"
+            resources:
+              requests:
+                cpu: 200m
+                memory: 256Mi
+              limits:
+                cpu: 500m
+                memory: 512Mi
+    EOF
+    
+    # Commit and push to bare repo
+    git add .
+    git commit -m "Initial commit"
+    git branch -M main
+    git remote add origin /repos/team-beta-config.git
+    git push origin main
+    
+    # Update server info for HTTP access
+    cd /repos/team-beta-config.git
+    git update-server-info
+    
+    echo "Git repositories setup complete!"
+    ls -la /repos/
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: git-servers
+  namespace: git-servers
+  labels:
+    app: git-servers
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: git-servers
+  template:
+    metadata:
+      labels:
+        app: git-servers
+    spec:
+      initContainers:
+      - name: setup-repos
+        image: alpine/git:latest
+        command: ["/bin/sh", "/scripts/setup-repos.sh"]
+        volumeMounts:
+        - name: git-init-script
+          mountPath: /scripts
+        - name: repos-storage
+          mountPath: /repos
+      containers:
+      - name: git-server
+        image: python:3.11-alpine
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          cd /repos
+          echo "Starting simple HTTP server for git repositories..."
+          echo "Contents of /repos:"
+          ls -la /repos/
+          echo "Contents of team-alpha-config.git:"
+          ls -la /repos/team-alpha-config.git/
+          
+          # Create a simple HTTP server that handles git smart protocol
+          cat > server.py << 'EOF'
+          #!/usr/bin/env python3
+          import http.server
+          import socketserver
+          import urllib.parse
+          import os
+          import subprocess
+          
+          class GitServerHandler(http.server.SimpleHTTPRequestHandler):
+              def do_GET(self):
+                  # Parse the URL
+                  parsed_url = urllib.parse.urlparse(self.path)
+                  path = parsed_url.path
+                  query = urllib.parse.parse_qs(parsed_url.query)
+                  
+                  # Remove /gitops-admin/ prefix if present
+                  if path.startswith('/gitops-admin/'):
+                      path = path[len('/gitops-admin/'):]
+                  
+                  # Handle git smart protocol requests
+                  if path.endswith('/info/refs') and 'service' in query:
+                      service = query['service'][0]
+                      if service == 'git-upload-pack':
+                          self.handle_git_upload_pack_refs(path)
+                          return
+                  
+                  # Update the request path and call parent handler
+                  self.path = path
+                  super().do_GET()
+              
+              def handle_git_upload_pack_refs(self, path):
+                  # Extract repository path
+                  repo_path = path.replace('/info/refs', '')
+                  full_repo_path = os.path.join('/repos', repo_path)
+                  
+                  if not os.path.exists(full_repo_path):
+                      self.send_error(404, "Repository not found")
+                      return
+                  
+                  try:
+                      # Run git ls-remote to get the refs
+                      result = subprocess.run(['git', 'ls-remote', '--heads', '--tags', full_repo_path], 
+                                            capture_output=True, text=True, cwd='/repos')
+                      
+                      if result.returncode != 0:
+                          self.send_error(500, "Git command failed")
+                          return
+                      
+                      # Format response for git smart protocol
+                      refs = result.stdout.strip()
+                      
+                      # Create the packet-line response
+                      response_lines = []
+                      response_lines.append("# service=git-upload-pack")
+                      response_lines.append("")  # flush packet
+                      
+                      for line in refs.split('\n'):
+                          if line.strip():
+                              response_lines.append(line.strip())
+                      
+                      # Format as packet-lines
+                      packet_response = ""
+                      for line in response_lines:
+                          if line == "":
+                              packet_response += "0000"  # flush packet
+                          else:
+                              line_with_newline = line + "\n"
+                              packet_len = len(line_with_newline) + 4
+                              packet_response += f"{packet_len:04x}{line_with_newline}"
+                      
+                      packet_response += "0000"  # final flush packet
+                      
+                      # Send response
+                      self.send_response(200)
+                      self.send_header('Content-Type', 'application/x-git-upload-pack-advertisement')
+                      self.send_header('Cache-Control', 'no-cache')
+                      self.end_headers()
+                      self.wfile.write(packet_response.encode('utf-8'))
+                      
+                  except Exception as e:
+                      print(f"Error handling git-upload-pack: {e}")
+                      self.send_error(500, str(e))
+          
+          PORT = 80
+          Handler = GitServerHandler
+          
+          with socketserver.TCPServer(("", PORT), Handler) as httpd:
+              print(f"Serving git repositories with smart protocol at port {PORT}")
+              print("Handling both direct URLs and /gitops-admin/ prefixed URLs")
+              httpd.serve_forever()
+          EOF
+          
+          python3 server.py
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: repos-storage
+          mountPath: /repos
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 15
+          periodSeconds: 20
+      volumes:
+      - name: git-init-script
+        configMap:
+          name: git-init-script
+          defaultMode: 0755
+      - name: repos-storage
+        emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: git-servers
+  namespace: git-servers
+  labels:
+    app: git-servers
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  selector:
+    app: git-servers
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: git-servers-nodeport
+  namespace: git-servers
+  labels:
+    app: git-servers
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+    nodePort: 30300
+  selector:
+    app: git-servers 

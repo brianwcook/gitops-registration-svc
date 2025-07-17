@@ -1,0 +1,131 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: konflux-gitops
+  labels:
+    name: konflux-gitops
+    app.kubernetes.io/name: gitops-registration
+    app.kubernetes.io/part-of: konflux-ci
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gitops-registration-sa
+  namespace: konflux-gitops
+  labels:
+    app: gitops-registration-service
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: gitops-tenant-role
+  labels:
+    app: gitops-registration-service
+rules:
+# Limited permissions for GitOps tenants
+- apiGroups: [""]
+  resources: ["configmaps", "secrets", "services"]
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+
+# Deployments and ReplicaSets
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+
+# Jobs and CronJobs (as specified in requirements)
+- apiGroups: ["batch"]
+  resources: ["jobs", "cronjobs"]
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+
+# Role and RoleBinding management within namespace (as specified in requirements)
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["roles", "rolebindings"]
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+
+# Network policies for tenant isolation
+- apiGroups: ["networking.k8s.io"]
+  resources: ["networkpolicies"]
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: gitops-registration-controller
+  labels:
+    app: gitops-registration-service
+rules:
+# Namespace management
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+
+# Service account management for tenant isolation
+- apiGroups: [""]
+  resources: ["serviceaccounts"]
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+
+# RBAC management for tenant permissions
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+
+# Permission to bind the gitops-tenant-role to service accounts
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["clusterroles"]
+  verbs: ["bind"]
+  resourceNames: ["gitops-tenant-role"]
+
+# ArgoCD AppProject and Application management
+- apiGroups: ["argoproj.io"]
+  resources: ["appprojects", "applications"]
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+
+# Resource quota management for tenants
+- apiGroups: [""]
+  resources: ["resourcequotas", "limitranges"]
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+
+# ConfigMap and Secret management for configuration
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+# Authorization checks using SubjectAccessReview (FR-008)
+- apiGroups: ["authorization.k8s.io"]
+  resources: ["subjectaccessreviews"]
+  verbs: ["create"]
+
+# Self authorization (to validate tokens)
+- apiGroups: ["authentication.k8s.io"]
+  resources: ["tokenreviews"]
+  verbs: ["create"]
+
+# Events for audit logging
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "get", "list", "watch"]
+
+# Read access to cluster-level resources for validation
+- apiGroups: [""]
+  resources: ["nodes", "persistentvolumes"]
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: gitops-registration-controller
+  labels:
+    app: gitops-registration-service
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: gitops-registration-controller
+subjects:
+- kind: ServiceAccount
+  name: gitops-registration-sa
+  namespace: konflux-gitops 

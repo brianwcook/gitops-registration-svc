@@ -1,0 +1,55 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: git-servers
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: git-servers
+  namespace: git-servers
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: git-servers
+  template:
+    metadata:
+      labels:
+        app: git-servers
+    spec:
+      containers:
+      - name: server
+        image: python:3.9-alpine
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          mkdir -p /tmp/repos/team-alpha-config /tmp/repos/team-beta-config
+          cd /tmp/repos
+          echo "Hello from team-alpha-config" > team-alpha-config/README.md
+          echo "Hello from team-beta-config" > team-beta-config/README.md
+          python3 -m http.server 80
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+          limits:
+            cpu: 50m
+            memory: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: git-servers
+  namespace: git-servers
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    targetPort: 80
+    nodePort: 30300
+  selector:
+    app: git-servers 

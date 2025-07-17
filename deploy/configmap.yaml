@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gitops-registration-config
+  namespace: konflux-gitops
+  labels:
+    app: gitops-registration-service
+data:
+  config.yaml: |
+    server:
+      port: 8080
+      timeout: 30s
+    argocd:
+      server: "argocd-server.argocd.svc.cluster.local"
+      namespace: "argocd"
+      grpc: true
+    kubernetes:
+      namespace: "konflux-gitops"
+    security:
+      allowedResourceTypes:
+      - jobs
+      - cronjobs
+      - secrets
+      - rolebindings
+      # Example service-level resource restrictions (cluster admin controlled)
+      # Only ONE of allowList or denyList should be used, not both
+      resourceAllowList:
+      - group: ""
+        kind: "ConfigMap"
+      - group: ""
+        kind: "Service"
+      - group: "apps"
+        kind: "Deployment"
+      - group: "batch"
+        kind: "Job"
+      requireAppProjectPerTenant: true
+      enableServiceAccountImpersonation: true
+    capacity:
+      enabled: true
+      limits:
+        maxNamespaces: 1000
+        maxTenantsPerUser: 10
+        emergencyThreshold: 0.95
+      overrides:
+        adminUsers: []
+        emergencyBypass: false
+      monitoring:
+        alertThreshold: 0.85
+    authorization:
+      requiredRole: "konflux-admin-user-actions"
+      enableSubjectAccessReview: true
+      auditFailedAttempts: true
+    tenants:
+      namespacePrefix: ""
+      defaultResourceQuota:
+        requests.cpu: "1"
+        requests.memory: "2Gi"
+        limits.cpu: "4"
+        limits.memory: "8Gi"
+        persistentvolumeclaims: "10" 

@@ -1,0 +1,358 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: git-servers
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: team-alpha-repo
+  namespace: git-servers
+data:
+  README.md: |
+    # Team Alpha GitOps Configuration
+    
+    This is a test repository for GitOps registration service integration tests.
+    
+    ## Content
+    - **Type**: basic-app
+    - **Manifests**: Located in `manifests/` directory
+    - **Purpose**: Integration testing for GitOps registration service
+    
+    ## Usage
+    This repository is used by ArgoCD for continuous deployment testing.
+    
+  HEAD: |
+    ref: refs/heads/main
+    
+  "info.refs": |
+    e69de29bb2d1d6434b8b29ae775ad8c2e48c5391	refs/heads/main
+    
+  "objects.info.packs": |
+  
+  # Git empty tree object
+  "objects.4b.825dc642cb6eb9a060e54bf8d69288fbee4904": ""
+  
+  # Git commit object pointing to empty tree (this is not the right hash, but a placeholder)
+  "objects.e6.9de29bb2d1d6434b8b29ae775ad8c2e48c5391": ""
+  
+  "manifests.namespace.yaml": |
+    apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: team-alpha
+      labels:
+        team: alpha
+        managed-by: gitops-registration-service
+        project: team-alpha-config
+      annotations:
+        gitops.io/repository: http://git-servers.git-servers.svc.cluster.local/team-alpha-config.git
+        gitops.io/branch: main
+  
+  "manifests.deployment.yaml": |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: team-alpha-app
+      namespace: team-alpha
+      labels:
+        app: team-alpha-app
+        team: alpha
+    spec:
+      replicas: 2
+      selector:
+        matchLabels:
+          app: team-alpha-app
+      template:
+        metadata:
+          labels:
+            app: team-alpha-app
+            team: alpha
+        spec:
+          containers:
+          - name: nginx
+            image: nginx:1.21-alpine
+            ports:
+            - containerPort: 80
+            env:
+            - name: TEAM
+              value: "alpha"
+            resources:
+              requests:
+                cpu: 100m
+                memory: 128Mi
+              limits:
+                cpu: 200m
+                memory: 256Mi
+    ---
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: team-alpha-service
+      namespace: team-alpha
+      labels:
+        app: team-alpha-app
+        team: alpha
+    spec:
+      selector:
+        app: team-alpha-app
+      ports:
+      - port: 80
+        targetPort: 80
+        name: http
+      type: ClusterIP
+  
+  "manifests.configmap.yaml": |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: team-alpha-config
+      namespace: team-alpha
+      labels:
+        app: team-alpha-app
+        team: alpha
+    data:
+      app.properties: |
+        team.name=alpha
+        team.environment=development
+        team.region=us-east-1
+        app.version=1.2.3
+        features.experimental=true
+      nginx.conf: |
+        server {
+            listen 80;
+            server_name localhost;
+            
+            location / {
+                root /usr/share/nginx/html;
+                index index.html;
+            }
+            
+            location /health {
+                return 200 "Team Alpha - Healthy\n";
+                add_header Content-Type text/plain;
+            }
+        }
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: team-beta-repo
+  namespace: git-servers
+data:
+  README.md: |
+    # Team Beta GitOps Configuration
+    
+    This is a test repository for GitOps registration service integration tests.
+    
+    ## Content
+    - **Type**: config-app
+    - **Manifests**: Located in `manifests.` directory
+    - **Purpose**: Integration testing for GitOps registration service
+    
+    ## Usage
+    This repository is used by ArgoCD for continuous deployment testing.
+    
+  HEAD: |
+    ref: refs/heads/main
+    
+  "info.refs": |
+    4b825dc642cb6eb9a060e54bf8d69288fbee4904	refs/heads/main
+    
+  "objects.info.packs": |
+  
+  # Git empty tree object (SHA1 of empty tree)
+  "objects.4b.825dc642cb6eb9a060e54bf8d69288fbee4904": ""
+  
+  "manifests.namespace.yaml": |
+    apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: team-beta
+      labels:
+        team: beta
+        managed-by: gitops-registration-service
+        project: team-beta-config
+        environment: production
+      annotations:
+        gitops.io/repository: http://git-servers.git-servers.svc.cluster.local/team-beta-config.git
+        gitops.io/branch: main
+  
+  "manifests.deployment.yaml": |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: team-beta-app
+      namespace: team-beta
+      labels:
+        app: team-beta-app
+        team: beta
+    spec:
+      replicas: 3
+      selector:
+        matchLabels:
+          app: team-beta-app
+      template:
+        metadata:
+          labels:
+            app: team-beta-app
+            team: beta
+        spec:
+          containers:
+          - name: app
+            image: httpd:2.4-alpine
+            ports:
+            - containerPort: 80
+            env:
+            - name: TEAM
+              value: "beta"
+            - name: ENVIRONMENT
+              value: "production"
+            resources:
+              requests:
+                cpu: 200m
+                memory: 256Mi
+              limits:
+                cpu: 500m
+                memory: 512Mi
+            livenessProbe:
+              httpGet:
+                path: /
+                port: 80
+              initialDelaySeconds: 30
+              periodSeconds: 10
+            readinessProbe:
+              httpGet:
+                path: /
+                port: 80
+              initialDelaySeconds: 5
+              periodSeconds: 5
+    ---
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: team-beta-service
+      namespace: team-beta
+      labels:
+        app: team-beta-app
+        team: beta
+    spec:
+      selector:
+        app: team-beta-app
+      ports:
+      - port: 80
+        targetPort: 80
+        name: http
+      type: ClusterIP
+  
+  "manifests.secret.yaml": |
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      name: team-beta-secrets
+      namespace: team-beta
+      labels:
+        app: team-beta-app
+        team: beta
+    type: Opaque
+    data:
+      # These are base64 encoded test values
+      database-url: cG9zdGdyZXNxbDovL3Rlc3QtZGI6NTQzMi90ZWFtYmV0YQ==
+      api-key: dGVhbS1iZXRhLWFwaS1rZXktMTIzNDU2
+      jwt-secret: dGVhbS1iZXRhLWp3dC1zZWNyZXQtYWJjZGVmZ2g=
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: git-servers
+  namespace: git-servers
+  labels:
+    app: git-servers
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: git-servers
+  template:
+    metadata:
+      labels:
+        app: git-servers
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx/conf.d
+        - name: team-alpha-repo
+          mountPath: /usr/share/nginx/html/team-alpha-config.git
+        - name: team-beta-repo
+          mountPath: /usr/share/nginx/html/team-beta-config.git
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: nginx-config
+      - name: team-alpha-repo
+        configMap:
+          name: team-alpha-repo
+      - name: team-beta-repo
+        configMap:
+          name: team-beta-repo
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: git-servers
+data:
+  default.conf: "server {\n    listen 80;\n    server_name localhost;\n    root /usr/share/nginx/html;\n    \n    # Enable directory listing\n    autoindex on;\n    autoindex_exact_size off;\n    autoindex_localtime on;\n    \n    # Add headers for git clone compatibility\n    add_header Access-Control-Allow-Origin *;\n    add_header Access-Control-Allow-Methods \"GET, POST, OPTIONS\";\n    add_header Access-Control-Allow-Headers \"Authorization, Content-Type\";\n    \n    # Health check\n    location /health {\n        return 200 \"Git servers healthy\\n\";\n        add_header Content-Type text/plain;\n    }\n    \n    # Git protocol content types\n    location ~ \\.git/info/refs$ {\n        add_header Content-Type \"application/x-git-upload-pack-advertisement\";\n    }\n    \n    location ~ \\.git/objects/ {\n        add_header Content-Type \"application/x-git-loose-object\";\n    }\n    \n    # Repository endpoints - serve files directly\n    location /team-alpha-config.git {\n        alias /usr/share/nginx/html/team-alpha-config.git;\n        # Map manifests/*.yaml to manifests.*.yaml files\n        location ~ ^/team-alpha-config\\.git/manifests/(.+)\\.yaml$ {\n            alias /usr/share/nginx/html/team-alpha-config.git/manifests.$1.yaml;\n        }\n        try_files $uri $uri/ =404;\n    }\n    \n    location /team-beta-config.git {\n        alias /usr/share/nginx/html/team-beta-config.git;\n        # Map manifests/*.yaml to manifests.*.yaml files  \n        location ~ ^/team-beta-config\\.git/manifests/(.+)\\.yaml$ {\n            alias /usr/share/nginx/html/team-beta-config.git/manifests.$1.yaml;\n        }\n        try_files $uri $uri/ =404;\n    }\n    \n    # Default location\n    location / {\n        try_files $uri $uri/ =404;\n    }\n}\n"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: git-servers
+  namespace: git-servers
+  labels:
+    app: git-servers
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  selector:
+    app: git-servers
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: git-servers-nodeport
+  namespace: git-servers
+  labels:
+    app: git-servers
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+    nodePort: 30300
+  selector:
+    app: git-servers 

@@ -1,0 +1,70 @@
+# GitOps Registration Service Configuration Example
+
+server:
+  port: 8080
+  timeout: 30s
+
+argocd:
+  server: "argocd-server.argocd.svc.cluster.local"
+  namespace: "argocd"
+  grpc: true
+
+kubernetes:
+  namespace: "gitops-registration-system"
+
+security:
+  allowedResourceTypes:
+    - "jobs"
+    - "cronjobs"
+    - "secrets"
+    - "rolebindings"
+  
+  # Resource restrictions - cluster admin can provide EITHER allowList OR denyList, not both
+  
+  # Example: Allow only specific resource types (whitelist approach)
+  resourceAllowList:
+    - group: ""
+      kind: "ConfigMap"
+    - group: ""
+      kind: "Service"
+    - group: "apps"
+      kind: "Deployment"
+    - group: "batch"
+      kind: "Job"
+    - group: "batch"
+      kind: "CronJob"
+  
+  # Example: Block specific resource types (blacklist approach) - uncomment to use instead of allowList
+  # resourceDenyList:
+  #   - group: ""
+  #     kind: "Secret"
+  #   - group: "rbac.authorization.k8s.io"
+  #     kind: "RoleBinding"
+  #   - group: "rbac.authorization.k8s.io"
+  #     kind: "ClusterRoleBinding"
+  #   # Example CRDs that could be blocked
+  #   - group: "kafka.strimzi.io"
+  #     kind: "KafkaTopic"
+  #   - group: "database.example.com"
+  #     kind: "MySQLDatabase"
+  
+  requireAppProjectPerTenant: true
+  enableServiceAccountImpersonation: true
+
+# Simple registration control - enable/disable new namespace registrations
+registration:
+  allowNewNamespaces: true  # Set to false to disable new namespace creation
+
+authorization:
+  requiredRole: "konflux-admin-user-actions"
+  enableSubjectAccessReview: true
+  auditFailedAttempts: true
+
+tenants:
+  namespacePrefix: ""
+  defaultResourceQuota:
+    requests.cpu: "1"
+    requests.memory: "2Gi"
+    limits.cpu: "4"
+    limits.memory: "8Gi"
+    persistentvolumeclaims: "10" 

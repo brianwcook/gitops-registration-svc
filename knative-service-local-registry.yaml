@@ -1,0 +1,61 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: gitops-registration-service
+  namespace: konflux-gitops
+  labels:
+    app: gitops-registration-service
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "1"
+        autoscaling.knative.dev/maxScale: "3"
+    spec:
+      serviceAccountName: gitops-registration-sa
+      containers:
+      - name: gitops-registration-service
+        image: localhost:5000/gitops-registration:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: CONFIG_PATH
+          value: "/etc/config/config.yaml"
+        - name: ARGOCD_SERVER
+          value: "argocd-server.argocd.svc.cluster.local"
+        - name: ARGOCD_NAMESPACE
+          value: "argocd"
+        - name: ALLOWED_RESOURCE_TYPES
+          value: "jobs,cronjobs,secrets,rolebindings"
+        - name: ALLOW_NEW_NAMESPACES
+          value: "true"
+        - name: AUTHORIZATION_REQUIRED_ROLE
+          value: "konflux-admin-user-actions"
+        volumeMounts:
+        - name: config
+          mountPath: /etc/config
+          readOnly: true
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 20
+      volumes:
+      - name: config
+        configMap:
+          name: gitops-registration-config
+          optional: true 

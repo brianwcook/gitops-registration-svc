@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitops-registration-service
+  namespace: konflux-gitops
+  labels:
+    app: gitops-registration-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gitops-registration-service
+  template:
+    metadata:
+      labels:
+        app: gitops-registration-service
+    spec:
+      serviceAccountName: gitops-registration-sa
+      containers:
+      - name: gitops-registration-service
+        image: localhost/gitops-registration-service:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+        env:
+        - name: CONFIG_PATH
+          value: "/etc/config/config.yaml"
+        - name: ARGOCD_SERVER
+          value: "argocd-server.argocd.svc.cluster.local"
+        - name: ARGOCD_NAMESPACE
+          value: "argocd"
+        - name: ALLOWED_RESOURCE_TYPES
+          value: "jobs,cronjobs,secrets,rolebindings"
+        - name: ALLOW_NEW_NAMESPACES
+          value: "true"
+        - name: AUTHORIZATION_REQUIRED_ROLE
+          value: "konflux-admin-user-actions"
+        volumeMounts:
+        - name: config
+          mountPath: /etc/config
+          readOnly: true
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 1000m
+            memory: 512Mi
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 65532
+          runAsGroup: 65532
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: config
+        configMap:
+          name: gitops-registration-config
+          optional: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gitops-registration-service
+  namespace: konflux-gitops
+  labels:
+    app: gitops-registration-service
+spec:
+  selector:
+    app: gitops-registration-service
+  ports:
+  - port: 8080
+    targetPort: 8080
+    name: http 

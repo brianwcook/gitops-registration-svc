@@ -1,0 +1,92 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: gitops-registration-service
+  namespace: konflux-gitops
+  labels:
+    app: gitops-registration-service
+    version: v1.0.0
+spec:
+  template:
+    metadata:
+      annotations:
+        # Knative autoscaling configuration
+        autoscaling.knative.dev/minScale: "1"
+        autoscaling.knative.dev/maxScale: "10"
+        autoscaling.knative.dev/target: "100"
+        autoscaling.knative.dev/targetUtilizationPercentage: "70"
+        autoscaling.knative.dev/window: "60s"
+        # Force secure registry usage
+        serving.knative.dev/creator: local-dev-secure
+      labels:
+        app: gitops-registration-service
+        version: v1.0.0
+    spec:
+      serviceAccountName: gitops-registration-sa
+      containerConcurrency: 100
+      timeoutSeconds: 300
+      containers:
+      - name: gitops-registration-service
+        # Using locally loaded image
+        image: localhost/gitops-registration:latest
+        imagePullPolicy: Never
+        ports:
+        - name: http1
+          containerPort: 8080
+          protocol: TCP
+        env:
+        - name: CONFIG_PATH
+          value: "/etc/config/config.yaml"
+        - name: ARGOCD_SERVER
+          value: "argocd-server.argocd.svc.cluster.local"
+        - name: ARGOCD_NAMESPACE
+          value: "argocd"
+        - name: ALLOWED_RESOURCE_TYPES
+          value: "jobs,cronjobs,secrets,rolebindings"
+        - name: ALLOW_NEW_NAMESPACES
+          value: "true"
+        - name: AUTHORIZATION_REQUIRED_ROLE
+          value: "konflux-admin-user-actions"
+        volumeMounts:
+        - name: config
+          mountPath: /etc/config
+          readOnly: true
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 1000m
+            memory: 512Mi
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 15
+          periodSeconds: 20
+          timeoutSeconds: 3
+          failureThreshold: 3
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 65532
+          runAsGroup: 65532
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: config
+        configMap:
+          name: gitops-registration-config
+          optional: true 

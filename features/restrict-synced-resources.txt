@@ -1,0 +1,87 @@
+Restricting the  kinds of resources that can be synced
+
+I want to be able to provide either
+* resources allowList or
+* resources denyList
+
+to the gitops registration service. Based on those parameters, when a new AppProject is created, the gitops registration service will configure new appProjects using the built-in whitelist / blacklist feature.
+
+GitOps registration Serice should only accept either an allowList or a denyList, but not both.
+
+If an allowList is provided, only the resources in the allowList will be synced.
+
+If a denyList is provided, all resources except the ones in the denyList will be synced.
+
+If no allowList or denyList is provided, all resources will be synced.
+
+The allowList and denyList should be a list of resource types. Some of the resource types will be CRDs, so don't try to validate that the resourceTypes are valid.
+
+An example of configuring an appProject blacklist:
+
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: control-plane-only
+spec:
+  clusterResourceBlacklist:
+    - group: kafka.strimzi.io
+      kind: KafkaTopic
+    - group: mycompany.io
+      kind: RedisCluster
+    - group: database.example.com
+      kind: MySQLDatabase
+
+An example with a whitelist:
+
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: control-plane-only
+  namespace: argocd
+spec:
+  description: >
+    Only allows control-plane resources. Everything else is blocked by default.
+    
+  # Allow only specific cluster-scoped resource kinds
+  clusterResourceWhitelist:
+    - group: ""
+      kind: ConfigMap
+    - group: ""
+      kind: Service
+    - group: apps
+      kind: Deployment
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+    - group: controlplane.mycompany.io
+      kind: ControlPlaneComponent
+
+  # Allow only specific namespaced resource kinds
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: ConfigMap
+    - group: ""
+      kind: Service
+    - group: apps
+      kind: Deployment
+    - group: controlplane.mycompany.io
+      kind: ControlPlaneComponent
+
+  # Optional: limit the destinations too
+  destinations:
+    - namespace: "*"
+      server: https://kubernetes.default.svc
+
+  # Optional: limit to certain source repos
+  sourceRepos:
+    - https://github.com/mycompany/control-plane-gitops
+
+
+Our app projects should already use "destinations" to enforce that an AppProject can only sync to a specific namespace. Ensure there is a unit test for that.
+
+Then crete this feature, and ensure there is good unit test coverage ensuring the argocd AppProject is generated correctly. 
+
+Finally, add integration tests that check that 
+* a real repo cannot sync a resource type on a blacklist
+* a real repo cannot sync a resource type missing from a whitelist
+* syncing from a real repo which does not violate either of these conditions still works properly.
+
