@@ -27,33 +27,43 @@ func (m *MockKubernetesService) HealthCheck(ctx context.Context) error {
 }
 
 func (m *MockKubernetesService) CreateNamespace(ctx context.Context, name string, labels map[string]string) error {
-	args := m.Called(ctx, name, labels)
-	return args.Error(0)
+	// Mock implementation for CreateNamespace
+	return nil
+}
+
+func (m *MockKubernetesService) CreateNamespaceWithMetadata(ctx context.Context, name string, labels map[string]string, annotations map[string]string) error {
+	// Mock implementation for CreateNamespaceWithMetadata
+	return nil
 }
 
 func (m *MockKubernetesService) DeleteNamespace(ctx context.Context, name string) error {
-	args := m.Called(ctx, name)
-	return args.Error(0)
+	// Mock implementation for DeleteNamespace
+	return nil
 }
 
 func (m *MockKubernetesService) NamespaceExists(ctx context.Context, name string) (bool, error) {
-	args := m.Called(ctx, name)
-	return args.Bool(0), args.Error(1)
+	// Mock implementation for NamespaceExists
+	return false, nil
 }
 
 func (m *MockKubernetesService) CountNamespaces(ctx context.Context) (int, error) {
-	args := m.Called(ctx)
-	return args.Int(0), args.Error(1)
+	// Mock implementation for CountNamespaces
+	return 5, nil
 }
 
 func (m *MockKubernetesService) CreateServiceAccount(ctx context.Context, namespace, name string) error {
-	args := m.Called(ctx, namespace, name)
-	return args.Error(0)
+	// Mock implementation for CreateServiceAccount
+	return nil
 }
 
 func (m *MockKubernetesService) UpdateNamespaceLabels(ctx context.Context, name string, labels map[string]string) error {
-	args := m.Called(ctx, name, labels)
-	return args.Error(0)
+	// Mock implementation for UpdateNamespaceLabels
+	return nil
+}
+
+func (m *MockKubernetesService) UpdateNamespaceMetadata(ctx context.Context, name string, labels map[string]string, annotations map[string]string) error {
+	// Mock implementation for UpdateNamespaceMetadata
+	return nil
 }
 
 func (m *MockKubernetesService) CreateRoleBinding(ctx context.Context, namespace, name, role, serviceAccount string) error {

@@ -54,7 +54,7 @@ func (h *RegistrationHandler) CreateRegistration(w http.ResponseWriter, r *http.
 
 	// Check if new namespace registration is allowed
 	if err := h.services.RegistrationControl.IsNewNamespaceAllowed(r.Context()); err != nil {
-		h.writeErrorResponse(w, "REGISTRATION_DISABLED", err.Error(), http.StatusServiceUnavailable)
+		h.writeErrorResponse(w, "REGISTRATION_DISABLED", err.Error(), http.StatusForbidden)
 		return
 	}
 

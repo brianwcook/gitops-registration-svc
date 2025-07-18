@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,6 +22,30 @@ type NamespaceConflictError struct {
 
 func (e *NamespaceConflictError) Error() string {
 	return fmt.Sprintf("namespace %s already exists", e.Namespace)
+}
+
+// extractRepositoryDomain extracts a label-safe domain from a repository URL
+func extractRepositoryDomain(repoURL string) string {
+	parsed, err := url.Parse(repoURL)
+	if err != nil {
+		// If URL parsing fails, create a safe fallback
+		return strings.ReplaceAll(strings.ReplaceAll(repoURL, ":", "-"), "/", "-")
+	}
+
+	domain := parsed.Host
+	if domain == "" {
+		domain = "unknown"
+	}
+
+	// Make domain label-safe: only alphanumeric, hyphens, dots, and underscores
+	domain = strings.ReplaceAll(domain, ":", "-")
+
+	// Truncate if too long (Kubernetes labels must be 63 chars or less)
+	if len(domain) > 63 {
+		domain = domain[:63]
+	}
+
+	return domain
 }
 
 // registrationService is the real implementation of RegistrationService
@@ -84,15 +110,23 @@ func (r *registrationService) CreateRegistration(ctx context.Context, req *types
 
 	// Create a valid label-safe repository identifier
 	repoHash := fmt.Sprintf("%x", sha256.Sum256([]byte(req.Repository.URL)))[:8]
+	repoDomain := extractRepositoryDomain(req.Repository.URL)
 
 	namespaceLabels := map[string]string{
 		"gitops.io/registration-id":    registrationID[:8], // Truncate to fit label limits
 		"gitops.io/repository-hash":    repoHash,
+		"gitops.io/repository-domain":  repoDomain,
 		"gitops.io/managed-by":         "gitops-registration-service",
 		"app.kubernetes.io/managed-by": "gitops-registration-service",
 	}
 
-	if err := r.k8s.CreateNamespace(ctx, req.Namespace, namespaceLabels); err != nil {
+	namespaceAnnotations := map[string]string{
+		"gitops.io/repository-url":    req.Repository.URL,
+		"gitops.io/repository-branch": req.Repository.Branch,
+		"gitops.io/registration-id":   registrationID,
+	}
+
+	if err := r.k8s.CreateNamespaceWithMetadata(ctx, req.Namespace, namespaceLabels, namespaceAnnotations); err != nil {
 		registration.Status.Phase = "failed"
 		registration.Status.Message = fmt.Sprintf("Failed to create namespace: %v", err)
 		return nil, fmt.Errorf("failed to create namespace: %w", err)
@@ -230,6 +264,7 @@ func (r *registrationService) RegisterExistingNamespace(ctx context.Context, req
 
 	// Create a valid label-safe repository identifier
 	repoHash := fmt.Sprintf("%x", sha256.Sum256([]byte(req.Repository.URL)))[:8]
+	repoDomain := extractRepositoryDomain(req.Repository.URL)
 
 	// Step 1: Create service account in existing namespace
 	r.logger.WithField("namespace", req.ExistingNamespace).Info("Creating service account in existing namespace")
@@ -248,18 +283,25 @@ func (r *registrationService) RegisterExistingNamespace(ctx context.Context, req
 		return nil, fmt.Errorf("failed to create role binding: %w", err)
 	}
 
-	// Step 3: Add GitOps labels to existing namespace
-	r.logger.WithField("namespace", req.ExistingNamespace).Info("Adding GitOps labels to existing namespace")
+	// Step 3: Add GitOps labels and repository metadata to existing namespace
+	r.logger.WithField("namespace", req.ExistingNamespace).Info("Adding GitOps metadata to existing namespace")
 	namespaceLabels := map[string]string{
 		"gitops.io/registration-id":    registrationID[:8], // Truncate to fit label limits
 		"gitops.io/repository-hash":    repoHash,
+		"gitops.io/repository-domain":  repoDomain,
 		"gitops.io/managed-by":         "gitops-registration-service",
 		"app.kubernetes.io/managed-by": "gitops-registration-service",
 	}
 
-	if err := r.k8s.UpdateNamespaceLabels(ctx, req.ExistingNamespace, namespaceLabels); err != nil {
-		r.logger.WithError(err).WithField("namespace", req.ExistingNamespace).Warn("Failed to update namespace labels, continuing...")
-		// Not a fatal error - we can continue without the labels
+	namespaceAnnotations := map[string]string{
+		"gitops.io/repository-url":    req.Repository.URL,
+		"gitops.io/repository-branch": req.Repository.Branch,
+		"gitops.io/registration-id":   registrationID,
+	}
+
+	if err := r.k8s.UpdateNamespaceMetadata(ctx, req.ExistingNamespace, namespaceLabels, namespaceAnnotations); err != nil {
+		r.logger.WithError(err).WithField("namespace", req.ExistingNamespace).Warn("Failed to update namespace metadata, continuing...")
+		// Not a fatal error - we can continue without the metadata
 	}
 
 	// Step 4: Create ArgoCD AppProject

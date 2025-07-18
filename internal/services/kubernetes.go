@@ -82,6 +82,46 @@ func (k *kubernetesService) CreateNamespace(ctx context.Context, name string, la
 	return nil
 }
 
+func (k *kubernetesService) CreateNamespaceWithMetadata(ctx context.Context, name string, labels map[string]string, annotations map[string]string) error {
+	k.logger.WithField("namespace", name).Info("Creating namespace with metadata")
+
+	// Set up default labels
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+	labels["gitops.io/managed-by"] = "gitops-registration-service"
+	labels["app.kubernetes.io/managed-by"] = "gitops-registration-service"
+
+	// Set up annotations
+	if annotations == nil {
+		annotations = make(map[string]string)
+	}
+
+	namespace := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        name,
+			Labels:      labels,
+			Annotations: annotations,
+		},
+	}
+
+	_, err := k.client.CoreV1().Namespaces().Create(ctx, namespace, metav1.CreateOptions{})
+	if err != nil {
+		if errors.IsAlreadyExists(err) {
+			k.logger.WithField("namespace", name).Info("Namespace already exists")
+			return nil
+		}
+		return fmt.Errorf("failed to create namespace %s: %w", name, err)
+	}
+
+	k.logger.WithFields(logrus.Fields{
+		"namespace":   name,
+		"labels":      labels,
+		"annotations": annotations,
+	}).Info("Successfully created namespace with metadata")
+	return nil
+}
+
 func (k *kubernetesService) DeleteNamespace(ctx context.Context, name string) error {
 	k.logger.WithField("namespace", name).Info("Deleting namespace")
 
@@ -127,6 +167,47 @@ func (k *kubernetesService) UpdateNamespaceLabels(ctx context.Context, name stri
 		"namespace": name,
 		"labels":    labels,
 	}).Info("Successfully updated namespace labels")
+	return nil
+}
+
+func (k *kubernetesService) UpdateNamespaceMetadata(ctx context.Context, name string, labels map[string]string, annotations map[string]string) error {
+	k.logger.WithField("namespace", name).Info("Updating namespace metadata")
+
+	// Get the current namespace
+	namespace, err := k.client.CoreV1().Namespaces().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get namespace %s: %w", name, err)
+	}
+
+	// Initialize labels and annotations if nil
+	if namespace.Labels == nil {
+		namespace.Labels = make(map[string]string)
+	}
+	if namespace.Annotations == nil {
+		namespace.Annotations = make(map[string]string)
+	}
+
+	// Merge the new labels with existing ones
+	for key, value := range labels {
+		namespace.Labels[key] = value
+	}
+
+	// Merge the new annotations with existing ones
+	for key, value := range annotations {
+		namespace.Annotations[key] = value
+	}
+
+	// Update the namespace
+	_, err = k.client.CoreV1().Namespaces().Update(ctx, namespace, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to update namespace %s metadata: %w", name, err)
+	}
+
+	k.logger.WithFields(logrus.Fields{
+		"namespace":   name,
+		"labels":      labels,
+		"annotations": annotations,
+	}).Info("Successfully updated namespace metadata")
 	return nil
 }
 

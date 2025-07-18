@@ -23,7 +23,9 @@ type Services struct {
 type KubernetesService interface {
 	HealthCheck(ctx context.Context) error
 	CreateNamespace(ctx context.Context, name string, labels map[string]string) error
+	CreateNamespaceWithMetadata(ctx context.Context, name string, labels map[string]string, annotations map[string]string) error
 	UpdateNamespaceLabels(ctx context.Context, name string, labels map[string]string) error
+	UpdateNamespaceMetadata(ctx context.Context, name string, labels map[string]string, annotations map[string]string) error
 	DeleteNamespace(ctx context.Context, name string) error
 	NamespaceExists(ctx context.Context, name string) (bool, error)
 	CountNamespaces(ctx context.Context) (int, error)

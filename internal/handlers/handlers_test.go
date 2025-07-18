@@ -35,6 +35,11 @@ func (m *MockKubernetesService) CreateNamespace(ctx context.Context, name string
 	return args.Error(0)
 }
 
+func (m *MockKubernetesService) CreateNamespaceWithMetadata(ctx context.Context, name string, labels map[string]string, annotations map[string]string) error {
+	args := m.Called(ctx, name, labels, annotations)
+	return args.Error(0)
+}
+
 func (m *MockKubernetesService) DeleteNamespace(ctx context.Context, name string) error {
 	args := m.Called(ctx, name)
 	return args.Error(0)
@@ -57,6 +62,11 @@ func (m *MockKubernetesService) CreateServiceAccount(ctx context.Context, namesp
 
 func (m *MockKubernetesService) UpdateNamespaceLabels(ctx context.Context, name string, labels map[string]string) error {
 	args := m.Called(ctx, name, labels)
+	return args.Error(0)
+}
+
+func (m *MockKubernetesService) UpdateNamespaceMetadata(ctx context.Context, name string, labels map[string]string, annotations map[string]string) error {
+	args := m.Called(ctx, name, labels, annotations)
 	return args.Error(0)
 }
 
@@ -317,7 +327,7 @@ func TestRegistrationHandler_CreateRegistration_RegistrationDisabled(t *testing.
 	w := httptest.NewRecorder()
 	handler.CreateRegistration(w, req)
 
-	assert.Equal(t, http.StatusServiceUnavailable, w.Code)
+	assert.Equal(t, http.StatusForbidden, w.Code)
 
 	var response types.ErrorResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)

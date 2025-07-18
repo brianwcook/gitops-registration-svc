@@ -33,6 +33,16 @@ func (k *kubernetesServiceStub) CreateNamespace(ctx context.Context, name string
 	return nil
 }
 
+func (k *kubernetesServiceStub) CreateNamespaceWithMetadata(ctx context.Context, name string, labels map[string]string, annotations map[string]string) error {
+	// TODO: Implement namespace creation with metadata
+	k.logger.WithFields(logrus.Fields{
+		"namespace":   name,
+		"labels":      labels,
+		"annotations": annotations,
+	}).Info("Creating namespace with metadata (stub)")
+	return nil
+}
+
 func (k *kubernetesServiceStub) DeleteNamespace(ctx context.Context, name string) error {
 	// TODO: Implement namespace deletion
 	k.logger.WithField("namespace", name).Info("Deleting namespace (stub)")
@@ -45,6 +55,16 @@ func (k *kubernetesServiceStub) UpdateNamespaceLabels(ctx context.Context, name 
 		"namespace": name,
 		"labels":    labels,
 	}).Info("Updating namespace labels (stub)")
+	return nil
+}
+
+func (k *kubernetesServiceStub) UpdateNamespaceMetadata(ctx context.Context, name string, labels map[string]string, annotations map[string]string) error {
+	// TODO: Implement namespace metadata update
+	k.logger.WithFields(logrus.Fields{
+		"namespace":   name,
+		"labels":      labels,
+		"annotations": annotations,
+	}).Info("Updating namespace metadata (stub)")
 	return nil
 }
 
