@@ -59,4 +59,4 @@ spec:
       - name: config
         configMap:
           name: gitops-registration-config
-          optional: true 
+          optional: true

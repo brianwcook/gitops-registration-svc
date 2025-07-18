@@ -1,0 +1,583 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: git-servers
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: git-init-script
+  namespace: git-servers
+data:
+  setup-repos.sh: |
+    #!/bin/sh
+    set -e
+    
+    echo "Setting up git repositories..."
+    
+    # Setup team-alpha-config repository
+    mkdir -p /var/www/git/team-alpha-config.git
+    cd /var/www/git/team-alpha-config.git
+    git init --bare
+    
+    # Create a temporary working directory to add files
+    mkdir -p /tmp/alpha-work
+    cd /tmp/alpha-work
+    git init
+    git config user.name "Git Server"
+    git config user.email "server@git.local"
+    
+    # Add README
+    cat > README.md << 'EOF'
+    # Team Alpha GitOps Configuration
+    
+    This is a test repository for GitOps registration service integration tests.
+    
+    ## Content
+    - **Type**: basic-app
+    - **Manifests**: Located in `manifests/` directory
+    - **Purpose**: Integration testing for GitOps registration service
+    EOF
+    
+    # Add manifests
+    mkdir -p manifests
+    cat > manifests/namespace.yaml << 'EOF'
+    apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: team-alpha
+      labels:
+        team: alpha
+        managed-by: gitops-registration-service
+        project: team-alpha-config
+      annotations:
+        gitops.io/repository: http://git-servers.git-servers.svc.cluster.local/git/team-alpha-config.git
+        gitops.io/branch: main
+    EOF
+    
+    cat > manifests/deployment.yaml << 'EOF'
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: team-alpha-app
+      namespace: team-alpha
+      labels:
+        app: team-alpha-app
+        team: alpha
+    spec:
+      replicas: 2
+      selector:
+        matchLabels:
+          app: team-alpha-app
+      template:
+        metadata:
+          labels:
+            app: team-alpha-app
+            team: alpha
+        spec:
+          containers:
+          - name: nginx
+            image: nginx:1.21-alpine
+            ports:
+            - containerPort: 80
+            env:
+            - name: TEAM
+              value: "alpha"
+            resources:
+              requests:
+                cpu: 100m
+                memory: 128Mi
+              limits:
+                cpu: 200m
+                memory: 256Mi
+    EOF
+    
+    # Commit and push to bare repo
+    git add .
+    git commit -m "Initial commit"
+    git branch -M main
+    git remote add origin /var/www/git/team-alpha-config.git
+    git push --force origin main
+    
+    # Update server info for HTTP access
+    cd /var/www/git/team-alpha-config.git
+    git update-server-info
+    
+    # Setup team-beta-config repository
+    mkdir -p /var/www/git/team-beta-config.git
+    cd /var/www/git/team-beta-config.git
+    git init --bare
+    
+    # Create a temporary working directory to add files
+    mkdir -p /tmp/beta-work
+    cd /tmp/beta-work
+    git init
+    git config user.name "Git Server"
+    git config user.email "server@git.local"
+    
+    # Add README
+    cat > README.md << 'EOF'
+    # Team Beta GitOps Configuration
+    
+    This is a test repository for GitOps registration service integration tests.
+    
+    ## Content
+    - **Type**: config-app
+    - **Manifests**: Located in `manifests/` directory
+    - **Purpose**: Integration testing for GitOps registration service
+    EOF
+    
+    # Add manifests (namespace-agnostic for flexible deployment)
+    mkdir -p manifests
+    cat > manifests/configmap.yaml << 'EOF'
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: team-beta-config
+      labels:
+        app: team-beta-app
+        team: beta
+        managed-by: gitops-registration-service
+    data:
+      app.properties: |
+        team.name=beta
+        team.environment=production
+        app.version=2.1.0
+        features.monitoring=true
+      config.yml: |
+        server:
+          port: 80
+          name: team-beta-app
+        logging:
+          level: info
+    EOF
+    
+    cat > manifests/deployment.yaml << 'EOF'
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: team-beta-app
+      labels:
+        app: team-beta-app
+        team: beta
+        managed-by: gitops-registration-service
+    spec:
+      replicas: 2
+      selector:
+        matchLabels:
+          app: team-beta-app
+      template:
+        metadata:
+          labels:
+            app: team-beta-app
+            team: beta
+        spec:
+          containers:
+          - name: app
+            image: httpd:2.4-alpine
+            ports:
+            - containerPort: 80
+            env:
+            - name: TEAM
+              value: "beta"
+            - name: ENVIRONMENT
+              value: "production"
+            resources:
+              requests:
+                cpu: 200m
+                memory: 256Mi
+              limits:
+                cpu: 500m
+                memory: 512Mi
+            livenessProbe:
+              httpGet:
+                path: /
+                port: 80
+              initialDelaySeconds: 30
+              periodSeconds: 10
+            readinessProbe:
+              httpGet:
+                path: /
+                port: 80
+              initialDelaySeconds: 5
+              periodSeconds: 5
+    ---
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: team-beta-service
+      labels:
+        app: team-beta-app
+        team: beta
+    spec:
+      selector:
+        app: team-beta-app
+      ports:
+      - port: 80
+        targetPort: 80
+        name: http
+      type: ClusterIP
+    EOF
+    
+    # Commit and push to bare repo
+    git add .
+    git commit -m "Initial commit"
+    git branch -M main
+    git remote add origin /var/www/git/team-beta-config.git
+    git push --force origin main
+    
+    # Update server info for HTTP access
+    cd /var/www/git/team-beta-config.git
+    git update-server-info
+    
+    # Setup malicious-cross-tenant repository (for tenant separation testing)
+    mkdir -p /var/www/git/malicious-cross-tenant.git
+    cd /var/www/git/malicious-cross-tenant.git
+    git init --bare
+    
+    # Create a temporary working directory to add files
+    mkdir -p /tmp/malicious-work
+    cd /tmp/malicious-work
+    git init
+    git config user.name "Git Server"
+    git config user.email "server@git.local"
+    
+    # Add README
+    cat > README.md << 'EOF'
+# Malicious Cross-Tenant Repository
+
+This repository contains manifests that attempt to deploy to unauthorized namespaces.
+It is used to test tenant separation and security boundaries in the GitOps registration service.
+
+⚠️ **WARNING**: This repository is for security testing only!
+
+## Purpose
+- Test that ArgoCD AppProjects properly enforce namespace restrictions
+- Verify tenant separation is working correctly  
+- Ensure applications cannot deploy to unauthorized namespaces
+
+## Malicious Manifests
+- Attempts to deploy to kube-system namespace
+- Attempts to deploy to default namespace
+- Attempts to deploy to other tenant namespaces
+EOF
+    
+    # Add malicious manifests that try to deploy to unauthorized namespaces
+    mkdir -p manifests
+    
+    # Try to deploy to kube-system (critical system namespace)
+    cat > manifests/attack-kube-system.yaml << 'EOF'
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: malicious-config
+  namespace: kube-system  # 🚨 UNAUTHORIZED NAMESPACE
+  labels:
+    attack: "kube-system"
+    purpose: "test-tenant-separation"
+data:
+  message: "This should be BLOCKED by AppProject destinations!"
+  attacker: "malicious-cross-tenant"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: malicious-app
+  namespace: kube-system  # 🚨 UNAUTHORIZED NAMESPACE
+  labels:
+    attack: "kube-system"
+    purpose: "test-tenant-separation"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: malicious-app
+  template:
+    metadata:
+      labels:
+        app: malicious-app
+    spec:
+      containers:
+      - name: malicious
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+EOF
+
+    # Try to deploy to default namespace
+    cat > manifests/attack-default.yaml << 'EOF'
+apiVersion: v1
+kind: Secret
+metadata:
+  name: stolen-secrets
+  namespace: default  # 🚨 UNAUTHORIZED NAMESPACE
+  labels:
+    attack: "default"
+    purpose: "test-tenant-separation"
+type: Opaque
+data:
+  password: dGhpc19zaG91bGRfYmVfYmxvY2tlZA==  # "this_should_be_blocked"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: malicious-service
+  namespace: default  # 🚨 UNAUTHORIZED NAMESPACE
+  labels:
+    attack: "default"
+    purpose: "test-tenant-separation"
+spec:
+  selector:
+    app: does-not-exist
+  ports:
+  - port: 80
+    targetPort: 80
+EOF
+
+    # Try to deploy to another tenant's namespace
+    cat > manifests/attack-other-tenant.yaml << 'EOF'
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cross-tenant-attack
+  namespace: team-alpha  # 🚨 UNAUTHORIZED NAMESPACE (different tenant)
+  labels:
+    attack: "cross-tenant"
+    purpose: "test-tenant-separation"
+data:
+  message: "Attempting to access team-alpha namespace!"
+  attacker: "malicious-cross-tenant"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cross-tenant-spy
+  namespace: team-beta  # 🚨 UNAUTHORIZED NAMESPACE (different tenant)
+  labels:
+    attack: "cross-tenant"
+    purpose: "test-tenant-separation"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cross-tenant-spy
+  template:
+    metadata:
+      labels:
+        app: cross-tenant-spy
+    spec:
+      containers:
+      - name: spy
+        image: busybox:latest
+        command: ["sleep", "3600"]
+        env:
+        - name: TARGET_NAMESPACE
+          value: "team-beta"
+EOF
+    
+    # Commit and push to bare repo
+    git add .
+    git commit -m "Add malicious manifests for tenant separation testing"
+    git branch -M main
+    git remote add origin /var/www/git/malicious-cross-tenant.git
+    git push --force origin main
+    
+    # Update server info for HTTP access
+    cd /var/www/git/malicious-cross-tenant.git
+    git update-server-info
+    
+    # Set proper permissions (Apache container will handle ownership)
+    chmod -R 755 /var/www/git
+    
+    echo "Git repositories setup complete!"
+    ls -la /var/www/git/
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: apache-git-config
+  namespace: git-servers
+data:
+  git.conf: |
+    LoadModule cgi_module modules/mod_cgi.so
+    LoadModule alias_module modules/mod_alias.so
+    LoadModule env_module modules/mod_env.so
+    
+    <VirtualHost *:80>
+        ServerName git-servers
+        DocumentRoot /var/www/html
+        
+        # Git Smart HTTP configuration
+        SetEnv GIT_PROJECT_ROOT /var/www/git
+        SetEnv GIT_HTTP_EXPORT_ALL
+        
+        # Handle /git/ requests with git-http-backend
+        ScriptAlias /git/ /usr/lib/git-core/git-http-backend/
+        
+        <LocationMatch "^/git/.*$">
+            CGIPassAuth On
+            Require all granted
+        </LocationMatch>
+        
+        # Support /gitops-admin/ prefix for backward compatibility
+        ScriptAlias /gitops-admin/ /usr/lib/git-core/git-http-backend/
+        
+        <LocationMatch "^/gitops-admin/.*$">
+            CGIPassAuth On
+            Require all granted
+            SetEnv GIT_PROJECT_ROOT /var/www/git
+            SetEnv GIT_HTTP_EXPORT_ALL
+        </LocationMatch>
+        
+        # Support direct repository paths (without /git/ prefix) for backward compatibility
+        ScriptAliasMatch "^/([a-zA-Z0-9][a-zA-Z0-9._-]*\.git)" /usr/lib/git-core/git-http-backend/$1
+        
+        <LocationMatch "^/[a-zA-Z0-9][a-zA-Z0-9._-]*\.git">
+            CGIPassAuth On
+            Require all granted
+            SetEnv GIT_PROJECT_ROOT /var/www/git
+            SetEnv GIT_HTTP_EXPORT_ALL
+        </LocationMatch>
+        
+        # Health check endpoint
+        Alias /health /var/www/html/health.txt
+        <Location /health>
+            Require all granted
+        </Location>
+        
+        # Logging
+        ErrorLog logs/error.log
+        CustomLog logs/access.log combined
+        LogLevel info
+    </VirtualHost>
+  
+  health.txt: |
+    Git servers healthy
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: git-servers
+  namespace: git-servers
+  labels:
+    app: git-servers
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: git-servers
+  template:
+    metadata:
+      labels:
+        app: git-servers
+    spec:
+      initContainers:
+      - name: setup-repos
+        image: alpine/git:latest
+        command: ["/bin/sh", "/scripts/setup-repos.sh"]
+        volumeMounts:
+        - name: git-init-script
+          mountPath: /scripts
+        - name: git-repositories
+          mountPath: /var/www/git
+      containers:
+      - name: apache-git
+        image: httpd:2.4
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: apache-git-config
+          mountPath: /usr/local/apache2/conf/extra/git.conf
+          subPath: git.conf
+        - name: apache-git-config
+          mountPath: /var/www/html/health.txt
+          subPath: health.txt
+        - name: git-repositories
+          mountPath: /var/www/git
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          # Install git and configure Apache
+          apt-get update && apt-get install -y git
+          
+          # Enable required modules and include git configuration
+          echo "Include conf/extra/git.conf" >> /usr/local/apache2/conf/httpd.conf
+          
+          # Create www-data user if it doesn't exist
+          id www-data || useradd --system --no-create-home --shell /bin/false www-data
+          
+          # Ensure proper permissions
+          chown -R www-data:www-data /var/www/git 2>/dev/null || true
+          
+          # Start Apache
+          echo "Starting Apache Git Smart HTTP server..."
+          exec httpd-foreground
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 20
+          periodSeconds: 20
+      volumes:
+      - name: git-init-script
+        configMap:
+          name: git-init-script
+          defaultMode: 0755
+      - name: apache-git-config
+        configMap:
+          name: apache-git-config
+      - name: git-repositories
+        emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: git-servers
+  namespace: git-servers
+  labels:
+    app: git-servers
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  selector:
+    app: git-servers
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: git-servers-nodeport
+  namespace: git-servers
+  labels:
+    app: git-servers
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+    nodePort: 30300
+  selector:
+    app: git-servers 

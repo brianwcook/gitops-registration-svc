@@ -2,13 +2,16 @@ package services
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
-
-	"github.com/sirupsen/logrus"
+	"log"
+	"time"
 
 	"github.com/konflux-ci/gitops-registration-service/internal/config"
 	"github.com/konflux-ci/gitops-registration-service/internal/types"
+	"github.com/sirupsen/logrus"
 )
 
 // Stub implementations to satisfy interfaces and allow compilation
@@ -33,6 +36,13 @@ func (k *kubernetesServiceStub) CreateNamespace(ctx context.Context, name string
 	return nil
 }
 
+func (k *kubernetesServiceStub) CreateNamespaceWithMetadata(
+	ctx context.Context, name string, labels, annotations map[string]string,
+) error {
+	log.Printf("STUB: Creating namespace %s with metadata", name)
+	return nil
+}
+
 func (k *kubernetesServiceStub) DeleteNamespace(ctx context.Context, name string) error {
 	// TODO: Implement namespace deletion
 	k.logger.WithField("namespace", name).Info("Deleting namespace (stub)")
@@ -45,6 +55,13 @@ func (k *kubernetesServiceStub) UpdateNamespaceLabels(ctx context.Context, name 
 		"namespace": name,
 		"labels":    labels,
 	}).Info("Updating namespace labels (stub)")
+	return nil
+}
+
+func (k *kubernetesServiceStub) UpdateNamespaceMetadata(
+	ctx context.Context, name string, labels, annotations map[string]string,
+) error {
+	log.Printf("STUB: Updating namespace %s metadata", name)
 	return nil
 }
 
@@ -76,6 +93,43 @@ func (k *kubernetesServiceStub) CreateRoleBinding(ctx context.Context, namespace
 		"serviceAccount": serviceAccount,
 	}).Info("Creating role binding (stub)")
 	return nil
+}
+
+// ValidateClusterRole validates a ClusterRole (stub implementation)
+func (k *kubernetesServiceStub) ValidateClusterRole(ctx context.Context, name string) (*ClusterRoleValidation, error) {
+	// Return a valid ClusterRole for testing
+	return &ClusterRoleValidation{
+		Exists:               true,
+		HasClusterAdmin:      false,
+		HasNamespaceSpanning: false,
+		HasClusterScoped:     false,
+		Warnings:             []string{},
+		ResourceTypes:        []string{"secrets", "configmaps", "deployments"},
+	}, nil
+}
+
+// CreateServiceAccountWithGenerateName creates a service account with generated name (stub)
+func (k *kubernetesServiceStub) CreateServiceAccountWithGenerateName(
+	ctx context.Context, namespace, baseName string,
+) (string, error) {
+	generatedName := fmt.Sprintf("%s-%s", baseName, randomString(8))
+	log.Printf("STUB: Creating service account %s in namespace %s", generatedName, namespace)
+	return generatedName, nil
+}
+
+// CreateRoleBindingForServiceAccount creates a RoleBinding (stub)
+func (k *kubernetesServiceStub) CreateRoleBindingForServiceAccount(
+	ctx context.Context, namespace, name, clusterRole, serviceAccountName string,
+) error {
+	log.Printf("STUB: Creating role binding %s for service account %s in namespace %s",
+		name, serviceAccountName, namespace)
+	return nil
+}
+
+// CheckAppProjectConflict checks for conflicts (stub)
+func (k *kubernetesServiceStub) CheckAppProjectConflict(ctx context.Context, repositoryHash string) (bool, error) {
+	// Always return no conflict for testing
+	return false, nil
 }
 
 // argoCDServiceStub is a stub implementation of ArgoCDService
@@ -137,6 +191,12 @@ func (a *argoCDServiceStub) convertResourceListToInterface(resources []types.App
 	return result
 }
 
+// CheckAppProjectConflict checks for repository conflicts (stub)
+func (a *argoCDServiceStub) CheckAppProjectConflict(ctx context.Context, repositoryHash string) (bool, error) {
+	// Always return no conflict for stub testing
+	return false, nil
+}
+
 // authorizationServiceStub is a stub implementation of AuthorizationService
 type authorizationServiceStub struct {
 	cfg    *config.Config
@@ -152,12 +212,10 @@ func NewAuthorizationService(cfg *config.Config, k8s KubernetesService, logger *
 	}
 }
 
-func (a *authorizationServiceStub) ValidateNamespaceAccess(ctx context.Context, userInfo *types.UserInfo, namespace string) error {
-	// TODO: Implement actual RBAC validation using SubjectAccessReview
-	a.logger.WithFields(logrus.Fields{
-		"user":      userInfo.Username,
-		"namespace": namespace,
-	}).Info("Validating namespace access (stub)")
+func (a *authorizationServiceStub) ValidateNamespaceAccess(
+	ctx context.Context, userInfo *types.UserInfo, namespace string,
+) error {
+	log.Printf("STUB: Validating access for user %s to namespace %s", userInfo.Username, namespace)
 	return nil
 }
 
@@ -188,7 +246,10 @@ func NewRegistrationControlService(cfg *config.Config, logger *logrus.Logger) Re
 	}
 }
 
-func (r *registrationControlServiceStub) GetRegistrationStatus(ctx context.Context) (*types.ServiceRegistrationStatus, error) {
+func (r *registrationControlServiceStub) GetRegistrationStatus(
+	ctx context.Context,
+) (*types.ServiceRegistrationStatus, error) {
+	log.Printf("STUB: Getting registration status")
 	return &types.ServiceRegistrationStatus{
 		AllowNewNamespaces: r.cfg.Registration.AllowNewNamespaces,
 		Message:            "Registration status based on configuration",
@@ -210,25 +271,32 @@ type registrationServiceStub struct {
 	logger *logrus.Logger
 }
 
-func NewRegistrationService(cfg *config.Config, k8s KubernetesService, argocd ArgoCDService, logger *logrus.Logger) RegistrationService {
-	return &registrationServiceStub{
-		cfg:    cfg,
-		k8s:    k8s,
-		argocd: argocd,
-		logger: logger,
-	}
+func NewRegistrationService(
+	cfg *config.Config, k8s KubernetesService, argocd ArgoCDService, logger *logrus.Logger,
+) RegistrationService {
+	log.Printf("STUB: Creating registration service")
+	return &registrationServiceStub{cfg: cfg, k8s: k8s, argocd: argocd, logger: logger}
 }
 
-func (r *registrationServiceStub) CreateRegistration(ctx context.Context, req *types.RegistrationRequest) (*types.Registration, error) {
-	// TODO: Implement actual registration creation
-	r.logger.WithField("namespace", req.Namespace).Info("Creating registration (stub)")
+func (r *registrationServiceStub) CreateRegistration(
+	ctx context.Context, req *types.RegistrationRequest,
+) (*types.Registration, error) {
+	log.Printf("STUB: Creating registration for namespace %s", req.Namespace)
 	return &types.Registration{
-		ID:         "stub-reg-123",
-		Repository: req.Repository,
-		Namespace:  req.Namespace,
+		ID:        "stub-reg-123",
+		Namespace: req.Namespace,
+		Repository: types.Repository{
+			URL:    req.Repository.URL,
+			Branch: req.Repository.Branch,
+		},
 		Status: types.RegistrationStatus{
 			Phase:   "pending",
 			Message: "Registration created (stub)",
+		},
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Labels: map[string]string{
+			"gitops.io/managed-by": "gitops-registration-service",
 		},
 	}, nil
 }
@@ -238,8 +306,10 @@ func (r *registrationServiceStub) GetRegistration(ctx context.Context, id string
 	return nil, errors.New("registration not found (stub)")
 }
 
-func (r *registrationServiceStub) ListRegistrations(ctx context.Context, filters map[string]string) ([]*types.Registration, error) {
-	// TODO: Implement registration listing
+func (r *registrationServiceStub) ListRegistrations(
+	ctx context.Context, filters map[string]string,
+) ([]*types.Registration, error) {
+	log.Printf("STUB: Listing registrations")
 	return []*types.Registration{}, nil
 }
 
@@ -249,21 +319,31 @@ func (r *registrationServiceStub) DeleteRegistration(ctx context.Context, id str
 	return nil
 }
 
-func (r *registrationServiceStub) RegisterExistingNamespace(ctx context.Context, req *types.ExistingNamespaceRequest, userInfo *types.UserInfo) (*types.Registration, error) {
-	// TODO: Implement existing namespace registration
-	r.logger.WithFields(logrus.Fields{
-		"namespace": req.ExistingNamespace,
-		"user":      userInfo.Username,
-	}).Info("Registering existing namespace (stub)")
-
+func (r *registrationServiceStub) RegisterExistingNamespace(
+	ctx context.Context, req *types.ExistingNamespaceRequest, userInfo *types.UserInfo,
+) (*types.Registration, error) {
+	log.Printf("STUB: Registering existing namespace %s for user %s",
+		req.ExistingNamespace, userInfo.Username)
 	return &types.Registration{
-		ID:         "stub-existing-reg-123",
-		Repository: req.Repository,
-		Namespace:  req.ExistingNamespace,
+		ID:        "stub-existing-reg-123",
+		Namespace: req.ExistingNamespace,
+		Repository: types.Repository{
+			URL:    req.Repository.URL,
+			Branch: req.Repository.Branch,
+		},
 		Status: types.RegistrationStatus{
-			Phase:            "active",
-			Message:          "Existing namespace registered (stub)",
-			NamespaceCreated: false, // Existing namespace, not created
+			Phase:              "active",
+			Message:            "Existing namespace registered (stub)",
+			NamespaceCreated:   false, // Existing namespace, not created by us
+			AppProjectCreated:  true,
+			ApplicationCreated: true,
+			ArgoCDApplication:  fmt.Sprintf("%s-app", req.ExistingNamespace),
+			ArgoCDAppProject:   req.ExistingNamespace,
+		},
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Labels: map[string]string{
+			"gitops.io/managed-by": "gitops-registration-service",
 		},
 	}, nil
 }
@@ -282,16 +362,18 @@ func (r *registrationServiceStub) ValidateRegistration(ctx context.Context, req 
 	return nil
 }
 
-func (r *registrationServiceStub) ValidateExistingNamespaceRequest(ctx context.Context, req *types.ExistingNamespaceRequest) error {
-	r.logger.Info("Validating existing namespace request (stub)")
-
-	// Basic validation
-	if req.ExistingNamespace == "" {
-		return fmt.Errorf("existingNamespace is required")
-	}
-	if req.Repository.URL == "" {
-		return fmt.Errorf("repository URL is required")
-	}
-
+func (r *registrationServiceStub) ValidateExistingNamespaceRequest(
+	ctx context.Context, req *types.ExistingNamespaceRequest,
+) error {
+	log.Printf("STUB: Validating existing namespace request for %s", req.ExistingNamespace)
 	return nil
+}
+
+// randomString generates a random string of the specified length
+func randomString(length int) string {
+	bytes := make([]byte, length/2)
+	if _, err := rand.Read(bytes); err != nil {
+		return "fallback"
+	}
+	return hex.EncodeToString(bytes)[:length]
 }

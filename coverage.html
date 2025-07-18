@@ -1,0 +1,2898 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>server: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/konflux-ci/gitops-registration-service/cmd/server/main.go (0.0%)</option>
+				
+				<option value="file1">github.com/konflux-ci/gitops-registration-service/internal/config/config.go (82.7%)</option>
+				
+				<option value="file2">github.com/konflux-ci/gitops-registration-service/internal/handlers/handlers.go (49.6%)</option>
+				
+				<option value="file3">github.com/konflux-ci/gitops-registration-service/internal/server/server.go (52.0%)</option>
+				
+				<option value="file4">github.com/konflux-ci/gitops-registration-service/internal/services/argocd.go (0.0%)</option>
+				
+				<option value="file5">github.com/konflux-ci/gitops-registration-service/internal/services/kubernetes.go (0.0%)</option>
+				
+				<option value="file6">github.com/konflux-ci/gitops-registration-service/internal/services/registration.go (13.7%)</option>
+				
+				<option value="file7">github.com/konflux-ci/gitops-registration-service/internal/services/services.go (16.7%)</option>
+				
+				<option value="file8">github.com/konflux-ci/gitops-registration-service/internal/services/stubs.go (55.3%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package main
+
+import (
+        "context"
+        "net/http"
+        "os"
+        "os/signal"
+        "syscall"
+        "time"
+
+        "github.com/konflux-ci/gitops-registration-service/internal/config"
+        "github.com/konflux-ci/gitops-registration-service/internal/server"
+        "github.com/sirupsen/logrus"
+)
+
+func main() <span class="cov0" title="0">{
+        // Initialize logger
+        log := logrus.New()
+        log.SetFormatter(&amp;logrus.JSONFormatter{})
+        log.SetLevel(logrus.InfoLevel)
+
+        // Load configuration
+        cfg, err := config.Load()
+        if err != nil </span><span class="cov0" title="0">{
+                log.WithError(err).Fatal("Failed to load configuration")
+        }</span>
+
+        // Validate impersonation configuration
+        <span class="cov0" title="0">if impersonationErr := cfg.ValidateImpersonationConfig(); impersonationErr != nil </span><span class="cov0" title="0">{
+                log.Fatalf("Invalid impersonation configuration: %v", impersonationErr)
+        }</span>
+
+        // Initialize server
+        <span class="cov0" title="0">srv, err := server.New(cfg, log)
+        if err != nil </span><span class="cov0" title="0">{
+                log.WithError(err).Fatal("Failed to initialize server")
+        }</span>
+
+        // Setup graceful shutdown
+        <span class="cov0" title="0">ctx, cancel := context.WithCancel(context.Background())
+        defer cancel()
+
+        // Start server
+        go func() </span><span class="cov0" title="0">{
+                log.WithField("port", cfg.Server.Port).Info("Starting GitOps Registration Service")
+                if err := srv.Start(ctx); err != nil &amp;&amp; err != http.ErrServerClosed </span><span class="cov0" title="0">{
+                        log.WithError(err).Fatal("Server failed to start")
+                }</span>
+        }()
+
+        // Wait for interrupt signal
+        <span class="cov0" title="0">quit := make(chan os.Signal, 1)
+        signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+        &lt;-quit
+
+        log.Info("Shutting down server...")
+
+        // Graceful shutdown with timeout
+        shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+        defer shutdownCancel()
+
+        if err := srv.Shutdown(shutdownCtx); err != nil </span><span class="cov0" title="0">{
+                log.WithError(err).Error("Server forced to shutdown")
+        }</span> else<span class="cov0" title="0"> {
+                log.Info("Server gracefully stopped")
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package config
+
+import (
+        "fmt"
+        "os"
+        "path/filepath"
+        "strconv"
+        "strings"
+
+        "gopkg.in/yaml.v3"
+)
+
+// Config holds the complete application configuration
+type Config struct {
+        Server        ServerConfig        `yaml:"server"`
+        ArgoCD        ArgoCDConfig        `yaml:"argocd"`
+        Kubernetes    KubernetesConfig    `yaml:"kubernetes"`
+        Security      SecurityConfig      `yaml:"security"`
+        Registration  RegistrationConfig  `yaml:"registration"`
+        Authorization AuthorizationConfig `yaml:"authorization"`
+        Tenants       TenantsConfig       `yaml:"tenants"`
+        Capacity      CapacityConfig      `yaml:"capacity"`
+}
+
+// ServerConfig holds HTTP server configuration
+type ServerConfig struct {
+        Port    int    `yaml:"port"`
+        Timeout string `yaml:"timeout"`
+}
+
+// ArgoCDConfig holds ArgoCD connection configuration
+type ArgoCDConfig struct {
+        Server    string `yaml:"server"`
+        Namespace string `yaml:"namespace"`
+        GRPC      bool   `yaml:"grpc"`
+}
+
+// KubernetesConfig holds Kubernetes client configuration
+type KubernetesConfig struct {
+        Namespace string `yaml:"namespace"`
+}
+
+// SecurityConfig holds security-related configuration
+type SecurityConfig struct {
+        AllowedResourceTypes       []string                     `yaml:"allowedResourceTypes"`
+        ResourceAllowList          []ServiceResourceRestriction `yaml:"resourceAllowList,omitempty"`
+        ResourceDenyList           []ServiceResourceRestriction `yaml:"resourceDenyList,omitempty"`
+        RequireAppProjectPerTenant bool                         `yaml:"requireAppProjectPerTenant"`
+        // Deprecated: Use Impersonation.Enabled instead
+        EnableServiceAccountImpersonation bool `yaml:"enableServiceAccountImpersonation"`
+        // New impersonation configuration
+        Impersonation ImpersonationConfig `yaml:"impersonation"`
+}
+
+// ImpersonationConfig holds ArgoCD impersonation configuration
+type ImpersonationConfig struct {
+        Enabled                bool   `yaml:"enabled"`
+        ClusterRole            string `yaml:"clusterRole"`
+        ServiceAccountBaseName string `yaml:"serviceAccountBaseName"`
+        ValidatePermissions    bool   `yaml:"validatePermissions"`
+        AutoCleanup            bool   `yaml:"autoCleanup"`
+}
+
+// ServiceResourceRestriction represents a resource type restriction for service-level configuration
+type ServiceResourceRestriction struct {
+        Group string `yaml:"group" json:"group"`
+        Kind  string `yaml:"kind" json:"kind"`
+}
+
+// RegistrationConfig holds registration control settings
+type RegistrationConfig struct {
+        AllowNewNamespaces bool `yaml:"allowNewNamespaces"`
+}
+
+// AuthorizationConfig holds authorization configuration
+type AuthorizationConfig struct {
+        RequiredRole              string `yaml:"requiredRole"`
+        EnableSubjectAccessReview bool   `yaml:"enableSubjectAccessReview"`
+        AuditFailedAttempts       bool   `yaml:"auditFailedAttempts"`
+}
+
+// TenantsConfig holds tenant-related configuration
+type TenantsConfig struct {
+        NamespacePrefix      string            `yaml:"namespacePrefix"`
+        DefaultResourceQuota map[string]string `yaml:"defaultResourceQuota"`
+}
+
+// CapacityConfig holds capacity management configuration
+type CapacityConfig struct {
+        Enabled bool           `yaml:"enabled"`
+        Limits  CapacityLimits `yaml:"limits"`
+}
+
+// CapacityLimits represents capacity limits configuration
+type CapacityLimits struct {
+        MaxNamespaces      int     `yaml:"maxNamespaces"`
+        MaxTenantsPerUser  int     `yaml:"maxTenantsPerUser"`
+        EmergencyThreshold float64 `yaml:"emergencyThreshold"`
+}
+
+// Load reads configuration from environment variables and config file
+func Load() (*Config, error) <span class="cov8" title="1">{
+        // Set defaults
+        cfg := getDefaultConfig()
+
+        // Load from config file if specified (before environment variable overrides)
+        if configPath := os.Getenv("CONFIG_PATH"); configPath != "" </span><span class="cov8" title="1">{
+                if err := loadFromFile(cfg, configPath); err != nil </span><span class="cov8" title="1">{
+                        return nil, fmt.Errorf("failed to load config file %s: %w", configPath, err)
+                }</span>
+        }
+
+        // Override with environment variables (these take precedence over file config)
+        <span class="cov8" title="1">applyEnvironmentOverrides(cfg)
+
+        // Validate resource restrictions
+        if err := validateResourceRestrictions(cfg.Security.ResourceAllowList, cfg.Security.ResourceDenyList); err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("invalid resource restrictions configuration: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return cfg, nil</span>
+}
+
+// getDefaultConfig returns a Config with default values
+func getDefaultConfig() *Config <span class="cov8" title="1">{
+        return &amp;Config{
+                Server: ServerConfig{
+                        Port:    8080,
+                        Timeout: "30s",
+                },
+                ArgoCD: ArgoCDConfig{
+                        Server:    "argocd-server.argocd.svc.cluster.local",
+                        Namespace: "argocd",
+                        GRPC:      true,
+                },
+                Kubernetes: KubernetesConfig{
+                        Namespace: "gitops-registration-system",
+                },
+                Security: SecurityConfig{
+                        AllowedResourceTypes: []string{
+                                "jobs",
+                                "cronjobs",
+                                "secrets",
+                                "rolebindings",
+                        },
+                        RequireAppProjectPerTenant:        true,
+                        EnableServiceAccountImpersonation: true,
+                        Impersonation: ImpersonationConfig{
+                                Enabled:                false, // Default to disabled for security
+                                ClusterRole:            "",    // Must be explicitly set when enabled
+                                ServiceAccountBaseName: "gitops-sa",
+                                ValidatePermissions:    true,
+                                AutoCleanup:            true,
+                        },
+                },
+                Registration: RegistrationConfig{
+                        AllowNewNamespaces: true,
+                },
+                Authorization: AuthorizationConfig{
+                        RequiredRole:              "konflux-admin-user-actions",
+                        EnableSubjectAccessReview: true,
+                        AuditFailedAttempts:       true,
+                },
+                Tenants: TenantsConfig{
+                        NamespacePrefix: "",
+                        DefaultResourceQuota: map[string]string{
+                                "requests.cpu":           "1",
+                                "requests.memory":        "2Gi",
+                                "limits.cpu":             "4",
+                                "limits.memory":          "8Gi",
+                                "persistentvolumeclaims": "10",
+                        },
+                },
+        }
+}</span>
+
+// applyEnvironmentOverrides applies environment variable overrides to the config
+func applyEnvironmentOverrides(cfg *Config) <span class="cov8" title="1">{
+        if port := os.Getenv("PORT"); port != "" </span><span class="cov8" title="1">{
+                if p, err := strconv.Atoi(port); err == nil </span><span class="cov8" title="1">{
+                        cfg.Server.Port = p
+                }</span>
+        }
+
+        <span class="cov8" title="1">if timeout := os.Getenv("SERVER_TIMEOUT"); timeout != "" </span><span class="cov8" title="1">{
+                cfg.Server.Timeout = timeout
+        }</span>
+
+        <span class="cov8" title="1">if argoCDServer := os.Getenv("ARGOCD_SERVER"); argoCDServer != "" </span><span class="cov8" title="1">{
+                cfg.ArgoCD.Server = argoCDServer
+        }</span>
+
+        <span class="cov8" title="1">if argoCDNamespace := os.Getenv("ARGOCD_NAMESPACE"); argoCDNamespace != "" </span><span class="cov8" title="1">{
+                cfg.ArgoCD.Namespace = argoCDNamespace
+        }</span>
+
+        <span class="cov8" title="1">if k8sNamespace := os.Getenv("KUBERNETES_NAMESPACE"); k8sNamespace != "" </span><span class="cov8" title="1">{
+                cfg.Kubernetes.Namespace = k8sNamespace
+        }</span>
+
+        <span class="cov8" title="1">if allowedResources := os.Getenv("ALLOWED_RESOURCE_TYPES"); allowedResources != "" </span><span class="cov8" title="1">{
+                cfg.Security.AllowedResourceTypes = strings.Split(allowedResources, ",")
+        }</span>
+
+        <span class="cov8" title="1">if allowNewNamespaces := os.Getenv("ALLOW_NEW_NAMESPACES"); allowNewNamespaces != "" </span><span class="cov8" title="1">{
+                if allowed, err := strconv.ParseBool(allowNewNamespaces); err == nil </span><span class="cov8" title="1">{
+                        cfg.Registration.AllowNewNamespaces = allowed
+                }</span>
+        }
+
+        <span class="cov8" title="1">if requiredRole := os.Getenv("AUTHORIZATION_REQUIRED_ROLE"); requiredRole != "" </span><span class="cov8" title="1">{
+                cfg.Authorization.RequiredRole = requiredRole
+        }</span>
+}
+
+// loadFromFile loads configuration from a YAML file
+func loadFromFile(cfg *Config, path string) error <span class="cov8" title="1">{
+        // Validate path to prevent file inclusion vulnerabilities
+        cleanPath := filepath.Clean(path)
+
+        // Check for directory traversal attempts
+        if strings.Contains(cleanPath, "..") </span><span class="cov0" title="0">{
+                return fmt.Errorf("config path contains directory traversal: %s", path)
+        }</span>
+
+        // Validate file extension
+        <span class="cov8" title="1">if ext := filepath.Ext(cleanPath); ext != ".yaml" &amp;&amp; ext != ".yml" </span><span class="cov0" title="0">{
+                return fmt.Errorf("config file must be a YAML file (.yaml or .yml): %s", path)
+        }</span>
+
+        <span class="cov8" title="1">data, err := os.ReadFile(cleanPath) // #nosec G304 -- path is validated above
+        if err != nil </span><span class="cov8" title="1">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">return yaml.Unmarshal(data, cfg)</span>
+}
+
+// validateResourceRestrictions validates service-level resource restrictions
+func validateResourceRestrictions(allowList, denyList []ServiceResourceRestriction) error <span class="cov8" title="1">{
+        // Ensure only allowList OR denyList is provided, not both
+        if len(allowList) &gt; 0 &amp;&amp; len(denyList) &gt; 0 </span><span class="cov8" title="1">{
+                return fmt.Errorf("cannot specify both resourceAllowList and resourceDenyList; provide only one")
+        }</span>
+
+        // Validate allowList entries
+        <span class="cov8" title="1">for i, resource := range allowList </span><span class="cov8" title="1">{
+                if resource.Kind == "" </span><span class="cov8" title="1">{
+                        return fmt.Errorf("resourceAllowList[%d]: kind is required", i)
+                }</span>
+                // Note: group can be empty for core resources, so we don't validate it
+        }
+
+        // Validate denyList entries
+        <span class="cov8" title="1">for i, resource := range denyList </span><span class="cov8" title="1">{
+                if resource.Kind == "" </span><span class="cov8" title="1">{
+                        return fmt.Errorf("resourceDenyList[%d]: kind is required", i)
+                }</span>
+                // Note: group can be empty for core resources, so we don't validate it
+        }
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// ValidateImpersonationConfig validates the impersonation configuration
+func (c *Config) ValidateImpersonationConfig() error <span class="cov0" title="0">{
+        if !c.Security.Impersonation.Enabled </span><span class="cov0" title="0">{
+                return nil // No validation needed if disabled
+        }</span>
+
+        <span class="cov0" title="0">if c.Security.Impersonation.ClusterRole == "" </span><span class="cov0" title="0">{
+                return fmt.Errorf("impersonation.clusterRole must be set when impersonation is enabled")
+        }</span>
+
+        <span class="cov0" title="0">if c.Security.Impersonation.ServiceAccountBaseName == "" </span><span class="cov0" title="0">{
+                return fmt.Errorf("impersonation.serviceAccountBaseName cannot be empty")
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package handlers
+
+import (
+        "encoding/json"
+        "net/http"
+        "strings"
+
+        "github.com/go-chi/chi/v5"
+        "github.com/konflux-ci/gitops-registration-service/internal/services"
+        "github.com/konflux-ci/gitops-registration-service/internal/types"
+        "github.com/sirupsen/logrus"
+)
+
+// isNamespaceConflictError checks if the error is a namespace conflict error
+func isNamespaceConflictError(err error) bool <span class="cov0" title="0">{
+        return strings.Contains(err.Error(), "already exists")
+}</span>
+
+// isRepositoryConflictError checks if the error is a repository conflict error
+func isRepositoryConflictError(err error) bool <span class="cov0" title="0">{
+        return strings.Contains(err.Error(), "already registered")
+}</span>
+
+// RegistrationHandler handles registration-related HTTP requests
+type RegistrationHandler struct {
+        services *services.Services
+        logger   *logrus.Logger
+}
+
+// NewRegistrationHandler creates a new registration handler
+func NewRegistrationHandler(services *services.Services, logger *logrus.Logger) *RegistrationHandler <span class="cov8" title="1">{
+        return &amp;RegistrationHandler{
+                services: services,
+                logger:   logger,
+        }
+}</span>
+
+// CreateRegistration handles POST /api/v1/registrations
+func (h *RegistrationHandler) CreateRegistration(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        var req types.RegistrationRequest
+        if err := json.NewDecoder(r.Body).Decode(&amp;req); err != nil </span><span class="cov8" title="1">{
+                h.writeErrorResponse(w, "INVALID_REQUEST", "Invalid JSON request body", http.StatusBadRequest)
+                return
+        }</span>
+
+        // Extract and validate user info (check authentication first)
+        <span class="cov8" title="1">userInfo, err := h.extractUserInfo(r)
+        if err != nil </span><span class="cov8" title="1">{
+                h.writeErrorResponse(w, "AUTHENTICATION_REQUIRED", "Valid authentication required", http.StatusUnauthorized)
+                return
+        }</span>
+
+        // Validate request
+        <span class="cov8" title="1">if validationErr := h.services.Registration.ValidateRegistration(r.Context(), &amp;req); validationErr != nil </span><span class="cov0" title="0">{
+                h.writeErrorResponse(w, "INVALID_REQUEST", validationErr.Error(), http.StatusBadRequest)
+                return
+        }</span>
+
+        // Check if new namespace registration is allowed
+        <span class="cov8" title="1">if controlErr := h.services.RegistrationControl.IsNewNamespaceAllowed(r.Context()); controlErr != nil </span><span class="cov8" title="1">{
+                h.writeErrorResponse(w, "REGISTRATION_DISABLED", controlErr.Error(), http.StatusForbidden)
+                return
+        }</span>
+
+        <span class="cov8" title="1">h.logger.WithField("user", userInfo.Username).Info("Creating new registration")
+
+        // Create registration
+        registration, err := h.services.Registration.CreateRegistration(r.Context(), &amp;req)
+        if err != nil </span><span class="cov0" title="0">{
+                h.logger.WithError(err).Error("Failed to create registration")
+
+                // Check for specific error types to return appropriate status codes
+                if isNamespaceConflictError(err) </span><span class="cov0" title="0">{
+                        h.writeErrorResponse(w, "NAMESPACE_CONFLICT", err.Error(), http.StatusConflict)
+                        return
+                }</span>
+                <span class="cov0" title="0">if isRepositoryConflictError(err) </span><span class="cov0" title="0">{
+                        h.writeErrorResponse(w, "REPOSITORY_CONFLICT", err.Error(), http.StatusConflict)
+                        return
+                }</span>
+
+                <span class="cov0" title="0">h.writeErrorResponse(w, "REGISTRATION_FAILED", "Failed to create registration", http.StatusInternalServerError)
+                return</span>
+        }
+
+        <span class="cov8" title="1">w.WriteHeader(http.StatusCreated)
+        if err := json.NewEncoder(w).Encode(registration); err != nil </span><span class="cov0" title="0">{
+                h.logger.WithError(err).Error("Failed to encode registration response")
+        }</span>
+}
+
+// RegisterExistingNamespace handles POST /api/v1/registrations/existing
+func (h *RegistrationHandler) RegisterExistingNamespace(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        var req types.ExistingNamespaceRequest
+        if err := json.NewDecoder(r.Body).Decode(&amp;req); err != nil </span><span class="cov0" title="0">{
+                h.writeErrorResponse(w, "INVALID_REQUEST", "Invalid JSON request body", http.StatusBadRequest)
+                return
+        }</span>
+
+        // Validate request
+        <span class="cov8" title="1">if err := h.services.Registration.ValidateExistingNamespaceRequest(r.Context(), &amp;req); err != nil </span><span class="cov0" title="0">{
+                h.writeErrorResponse(w, "INVALID_REQUEST", err.Error(), http.StatusBadRequest)
+                return
+        }</span>
+
+        // Extract and validate user info
+        <span class="cov8" title="1">userInfo, err := h.extractUserInfo(r)
+        if err != nil </span><span class="cov0" title="0">{
+                h.writeErrorResponse(w, "AUTHENTICATION_REQUIRED", "Valid authentication required", http.StatusUnauthorized)
+                return
+        }</span>
+
+        // Validate user has access to the existing namespace
+        <span class="cov8" title="1">authErr := h.services.Authorization.ValidateNamespaceAccess(r.Context(), userInfo, req.ExistingNamespace)
+        if authErr != nil </span><span class="cov8" title="1">{
+                h.logger.WithFields(logrus.Fields{
+                        "user":      userInfo.Username,
+                        "namespace": req.ExistingNamespace,
+                        "error":     authErr,
+                }).Warn("Unauthorized namespace access attempt")
+                h.writeErrorResponse(w, "INSUFFICIENT_PERMISSIONS",
+                        "Insufficient permissions for target namespace", http.StatusForbidden)
+                return
+        }</span>
+
+        // Register existing namespace
+        <span class="cov8" title="1">registration, err := h.services.Registration.RegisterExistingNamespace(r.Context(), &amp;req, userInfo)
+        if err != nil </span><span class="cov0" title="0">{
+                h.logger.WithError(err).Error("Failed to register existing namespace")
+                h.writeErrorResponse(w, "REGISTRATION_FAILED",
+                        "Failed to register existing namespace", http.StatusInternalServerError)
+                return
+        }</span>
+
+        <span class="cov8" title="1">w.WriteHeader(http.StatusCreated)
+        if err := json.NewEncoder(w).Encode(registration); err != nil </span><span class="cov0" title="0">{
+                h.logger.WithError(err).Error("Failed to encode registration response")
+        }</span>
+}
+
+// ListRegistrations handles GET /api/v1/registrations
+func (h *RegistrationHandler) ListRegistrations(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        // Extract query parameters for filtering
+        filters := make(map[string]string)
+        if namespace := r.URL.Query().Get("namespace"); namespace != "" </span><span class="cov0" title="0">{
+                filters["namespace"] = namespace
+        }</span>
+
+        <span class="cov8" title="1">registrations, err := h.services.Registration.ListRegistrations(r.Context(), filters)
+        if err != nil </span><span class="cov0" title="0">{
+                h.logger.WithError(err).Error("Failed to list registrations")
+                h.writeErrorResponse(w, "LIST_FAILED", "Failed to list registrations", http.StatusInternalServerError)
+                return
+        }</span>
+
+        <span class="cov8" title="1">w.WriteHeader(http.StatusOK)
+        if err := json.NewEncoder(w).Encode(registrations); err != nil </span><span class="cov0" title="0">{
+                h.logger.WithError(err).Error("Failed to encode registrations response")
+        }</span>
+}
+
+// GetRegistration handles GET /api/v1/registrations/{id}
+func (h *RegistrationHandler) GetRegistration(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        id := chi.URLParam(r, "id")
+        if id == "" </span><span class="cov0" title="0">{
+                h.writeErrorResponse(w, "INVALID_REQUEST", "Registration ID required", http.StatusBadRequest)
+                return
+        }</span>
+
+        <span class="cov8" title="1">registration, err := h.services.Registration.GetRegistration(r.Context(), id)
+        if err != nil </span><span class="cov8" title="1">{
+                h.writeErrorResponse(w, "NOT_FOUND", "Registration not found", http.StatusNotFound)
+                return
+        }</span>
+
+        <span class="cov8" title="1">w.WriteHeader(http.StatusOK)
+        if err := json.NewEncoder(w).Encode(registration); err != nil </span><span class="cov0" title="0">{
+                h.logger.WithError(err).Error("Failed to encode registration response")
+        }</span>
+}
+
+// DeleteRegistration handles DELETE /api/v1/registrations/{id}
+func (h *RegistrationHandler) DeleteRegistration(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        id := chi.URLParam(r, "id")
+        if id == "" </span><span class="cov0" title="0">{
+                h.writeErrorResponse(w, "INVALID_REQUEST", "Registration ID required", http.StatusBadRequest)
+                return
+        }</span>
+
+        <span class="cov8" title="1">if err := h.services.Registration.DeleteRegistration(r.Context(), id); err != nil </span><span class="cov0" title="0">{
+                h.logger.WithError(err).Error("Failed to delete registration")
+                h.writeErrorResponse(w, "DELETE_FAILED", "Failed to delete registration", http.StatusInternalServerError)
+                return
+        }</span>
+
+        <span class="cov8" title="1">w.WriteHeader(http.StatusNoContent)</span>
+}
+
+// GetRegistrationStatus handles GET /api/v1/registrations/{id}/status
+func (h *RegistrationHandler) GetRegistrationStatus(w http.ResponseWriter, r *http.Request) <span class="cov0" title="0">{
+        id := chi.URLParam(r, "id")
+        if id == "" </span><span class="cov0" title="0">{
+                h.writeErrorResponse(w, "INVALID_REQUEST", "Registration ID required", http.StatusBadRequest)
+                return
+        }</span>
+
+        <span class="cov0" title="0">registration, err := h.services.Registration.GetRegistration(r.Context(), id)
+        if err != nil </span><span class="cov0" title="0">{
+                h.writeErrorResponse(w, "NOT_FOUND", "Registration not found", http.StatusNotFound)
+                return
+        }</span>
+
+        <span class="cov0" title="0">w.WriteHeader(http.StatusOK)
+        if err := json.NewEncoder(w).Encode(registration.Status); err != nil </span><span class="cov0" title="0">{
+                h.logger.WithError(err).Error("Failed to encode registration status response")
+        }</span>
+}
+
+// SyncRegistration handles POST /api/v1/registrations/{id}/sync
+func (h *RegistrationHandler) SyncRegistration(w http.ResponseWriter, r *http.Request) <span class="cov0" title="0">{
+        id := chi.URLParam(r, "id")
+        if id == "" </span><span class="cov0" title="0">{
+                h.writeErrorResponse(w, "INVALID_REQUEST", "Registration ID required", http.StatusBadRequest)
+                return
+        }</span>
+
+        // TODO: Implement sync trigger logic
+        <span class="cov0" title="0">h.logger.WithField("id", id).Info("Sync triggered for registration (stub)")
+
+        response := map[string]interface{}{
+                "message": "Sync triggered successfully",
+                "id":      id,
+        }
+
+        w.WriteHeader(http.StatusOK)
+        if err := json.NewEncoder(w).Encode(response); err != nil </span><span class="cov0" title="0">{
+                h.logger.WithError(err).Error("Failed to encode sync response")
+        }</span>
+}
+
+// Helper methods
+
+// extractUserInfo extracts user information from request context/headers
+func (h *RegistrationHandler) extractUserInfo(r *http.Request) (*types.UserInfo, error) <span class="cov8" title="1">{
+        // Extract Authorization header
+        authHeader := r.Header.Get("Authorization")
+        if authHeader == "" </span><span class="cov8" title="1">{
+                return nil, http.ErrNoCookie
+        }</span>
+
+        // Extract Bearer token
+        <span class="cov8" title="1">token := strings.TrimPrefix(authHeader, "Bearer ")
+        if token == authHeader </span><span class="cov0" title="0">{
+                return nil, http.ErrNoCookie
+        }</span>
+
+        <span class="cov8" title="1">return h.services.Authorization.ExtractUserInfo(r.Context(), token)</span>
+}
+
+// writeErrorResponse writes a standardized error response
+func (h *RegistrationHandler) writeErrorResponse(w http.ResponseWriter, errorCode, message string, statusCode int) <span class="cov8" title="1">{
+        w.WriteHeader(statusCode)
+        if err := json.NewEncoder(w).Encode(types.ErrorResponse{
+                Error:   errorCode,
+                Message: message,
+                Code:    statusCode,
+        }); err != nil </span><span class="cov0" title="0">{
+                h.logger.WithError(err).Error("Failed to encode error response")
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package server
+
+import (
+        "context"
+        "encoding/json"
+        "fmt"
+        "net/http"
+        "time"
+
+        "github.com/go-chi/chi/v5"
+        "github.com/go-chi/chi/v5/middleware"
+        "github.com/go-chi/cors"
+        "github.com/konflux-ci/gitops-registration-service/internal/config"
+        "github.com/konflux-ci/gitops-registration-service/internal/handlers"
+        "github.com/konflux-ci/gitops-registration-service/internal/services"
+        "github.com/prometheus/client_golang/prometheus/promhttp"
+        "github.com/sirupsen/logrus"
+)
+
+// Server represents the HTTP server
+type Server struct {
+        config   *config.Config
+        logger   *logrus.Logger
+        router   *chi.Mux
+        server   *http.Server
+        services *services.Services
+}
+
+// New creates a new server instance
+func New(cfg *config.Config, logger *logrus.Logger) (*Server, error) <span class="cov0" title="0">{
+        // Initialize services
+        svc, err := services.New(cfg, logger)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to initialize services: %w", err)
+        }</span>
+
+        // Validate impersonation configuration if enabled
+        <span class="cov0" title="0">if cfg.Security.Impersonation.Enabled </span><span class="cov0" title="0">{
+                logger.Infof("Impersonation is enabled, validating ClusterRole: %s", cfg.Security.Impersonation.ClusterRole)
+
+                validation, err := svc.Kubernetes.ValidateClusterRole(context.Background(), cfg.Security.Impersonation.ClusterRole)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("failed to validate ClusterRole %s: %w", cfg.Security.Impersonation.ClusterRole, err)
+                }</span>
+
+                <span class="cov0" title="0">if !validation.Exists </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("ClusterRole %s does not exist", cfg.Security.Impersonation.ClusterRole)
+                }</span>
+
+                // Log security warnings
+                <span class="cov0" title="0">if len(validation.Warnings) &gt; 0 </span><span class="cov0" title="0">{
+                        logger.Warnf("ClusterRole %s security warnings:", cfg.Security.Impersonation.ClusterRole)
+                        for _, warning := range validation.Warnings </span><span class="cov0" title="0">{
+                                logger.Warnf("  - %s", warning)
+                        }</span>
+                }
+
+                <span class="cov0" title="0">logger.Infof("ClusterRole %s validated successfully for impersonation", cfg.Security.Impersonation.ClusterRole)</span>
+        }
+
+        // Create router
+        <span class="cov0" title="0">router := chi.NewRouter()
+
+        s := &amp;Server{
+                config:   cfg,
+                logger:   logger,
+                router:   router,
+                services: svc,
+        }
+
+        // Setup middleware
+        s.setupMiddleware()
+
+        // Setup routes
+        s.setupRoutes()
+
+        // Create HTTP server
+        s.server = &amp;http.Server{
+                Addr:              fmt.Sprintf(":%d", cfg.Server.Port),
+                Handler:           router,
+                ReadHeaderTimeout: 30 * time.Second, // Prevent Slowloris attacks
+        }
+
+        return s, nil</span>
+}
+
+// Start starts the HTTP server
+func (s *Server) Start(ctx context.Context) error <span class="cov0" title="0">{
+        s.logger.WithField("port", s.config.Server.Port).Info("Starting HTTP server")
+
+        // Start server in a goroutine
+        errChan := make(chan error, 1)
+        go func() </span><span class="cov0" title="0">{
+                if err := s.server.ListenAndServe(); err != nil &amp;&amp; err != http.ErrServerClosed </span><span class="cov0" title="0">{
+                        errChan &lt;- err
+                }</span>
+        }()
+
+        // Wait for context cancellation or server error
+        <span class="cov0" title="0">select </span>{
+        case &lt;-ctx.Done():<span class="cov0" title="0">
+                return s.server.Shutdown(ctx)</span>
+        case err := &lt;-errChan:<span class="cov0" title="0">
+                return err</span>
+        }
+}
+
+// Shutdown gracefully shuts down the server
+func (s *Server) Shutdown(ctx context.Context) error <span class="cov0" title="0">{
+        s.logger.Info("Shutting down HTTP server")
+        return s.server.Shutdown(ctx)
+}</span>
+
+// setupMiddleware configures middleware for the router
+func (s *Server) setupMiddleware() <span class="cov8" title="1">{
+        // Request ID middleware
+        s.router.Use(middleware.RequestID)
+
+        // Structured logging middleware
+        s.router.Use(middleware.RequestLogger(&amp;middleware.DefaultLogFormatter{
+                Logger:  s.logger,
+                NoColor: true,
+        }))
+
+        // Recovery middleware
+        s.router.Use(middleware.Recoverer)
+
+        // Timeout middleware
+        timeout, err := time.ParseDuration(s.config.Server.Timeout)
+        if err != nil </span><span class="cov0" title="0">{
+                s.logger.WithError(err).Warn("Invalid timeout duration, using default 30s")
+                timeout = 30 * time.Second
+        }</span>
+        <span class="cov8" title="1">s.router.Use(middleware.Timeout(timeout))
+
+        // CORS middleware
+        s.router.Use(cors.Handler(cors.Options{
+                AllowedOrigins:   []string{"*"},
+                AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+                AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+                ExposedHeaders:   []string{"Link"},
+                AllowCredentials: true,
+                MaxAge:           300,
+        }))
+
+        // Content-Type middleware
+        s.router.Use(middleware.SetHeader("Content-Type", "application/json"))</span>
+}
+
+// setupRoutes configures API routes
+func (s *Server) setupRoutes() <span class="cov8" title="1">{
+        // Health check endpoints
+        s.router.Get("/health/live", s.healthLive)
+        s.router.Get("/health/ready", s.healthReady)
+
+        // Metrics endpoint
+        s.router.Handle("/metrics", promhttp.Handler())
+
+        // API routes
+        s.router.Route("/api/v1", func(r chi.Router) </span><span class="cov8" title="1">{
+                // Registration handlers
+                registrationHandler := handlers.NewRegistrationHandler(s.services, s.logger)
+
+                r.Route("/registrations", func(r chi.Router) </span><span class="cov8" title="1">{
+                        r.Post("/", registrationHandler.CreateRegistration)
+                        r.Get("/", registrationHandler.ListRegistrations)
+                        r.Post("/existing", registrationHandler.RegisterExistingNamespace)
+
+                        r.Route("/{id}", func(r chi.Router) </span><span class="cov8" title="1">{
+                                r.Get("/", registrationHandler.GetRegistration)
+                                r.Delete("/", registrationHandler.DeleteRegistration)
+                                r.Get("/status", registrationHandler.GetRegistrationStatus)
+                                r.Post("/sync", registrationHandler.SyncRegistration)
+                        }</span>)
+                })
+
+        })
+}
+
+// healthLive handles liveness probe requests
+func (s *Server) healthLive(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        response := map[string]interface{}{
+                "status":    "ok",
+                "timestamp": time.Now().UTC().Format(time.RFC3339),
+                "service":   "gitops-registration-service",
+        }
+
+        w.WriteHeader(http.StatusOK)
+        if err := json.NewEncoder(w).Encode(response); err != nil </span><span class="cov0" title="0">{
+                s.logger.WithError(err).Error("Failed to encode health response")
+        }</span>
+}
+
+// healthReady handles readiness probe requests
+func (s *Server) healthReady(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        // Check dependencies
+        if err := s.checkDependencies(r.Context()); err != nil </span><span class="cov8" title="1">{
+                s.logger.WithError(err).Error("Readiness check failed")
+
+                response := map[string]interface{}{
+                        "status":    "not ready",
+                        "error":     err.Error(),
+                        "timestamp": time.Now().UTC().Format(time.RFC3339),
+                }
+
+                w.WriteHeader(http.StatusServiceUnavailable)
+                if err := json.NewEncoder(w).Encode(response); err != nil </span><span class="cov0" title="0">{
+                        s.logger.WithError(err).Error("Failed to encode error response")
+                }</span>
+                <span class="cov8" title="1">return</span>
+        }
+
+        <span class="cov8" title="1">response := map[string]interface{}{
+                "status":    "ready",
+                "timestamp": time.Now().UTC().Format(time.RFC3339),
+                "service":   "gitops-registration-service",
+        }
+
+        w.WriteHeader(http.StatusOK)
+        if err := json.NewEncoder(w).Encode(response); err != nil </span><span class="cov0" title="0">{
+                s.logger.WithError(err).Error("Failed to encode ready response")
+        }</span>
+}
+
+// checkDependencies verifies that all required dependencies are available
+func (s *Server) checkDependencies(ctx context.Context) error <span class="cov8" title="1">{
+        // Check Kubernetes API connectivity
+        if err := s.services.Kubernetes.HealthCheck(ctx); err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("kubernetes api unavailable: %w", err)
+        }</span>
+
+        // Check ArgoCD connectivity
+        <span class="cov8" title="1">if err := s.services.ArgoCD.HealthCheck(ctx); err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("argocd api unavailable: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package services
+
+import (
+        "context"
+        "fmt"
+        "time"
+
+        "github.com/konflux-ci/gitops-registration-service/internal/config"
+        "github.com/konflux-ci/gitops-registration-service/internal/types"
+        "github.com/sirupsen/logrus"
+        "k8s.io/apimachinery/pkg/api/errors"
+        metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+        "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+        "k8s.io/apimachinery/pkg/runtime/schema"
+        "k8s.io/client-go/dynamic"
+        "k8s.io/client-go/rest"
+)
+
+// argoCDService is the real implementation of ArgoCDService
+type argoCDService struct {
+        client    dynamic.Interface
+        cfg       *config.Config
+        logger    *logrus.Logger
+        namespace string
+}
+
+// ArgoCD CRD GroupVersionResources
+var (
+        appProjectGVR = schema.GroupVersionResource{
+                Group:    "argoproj.io",
+                Version:  "v1alpha1",
+                Resource: "appprojects",
+        }
+
+        applicationGVR = schema.GroupVersionResource{
+                Group:    "argoproj.io",
+                Version:  "v1alpha1",
+                Resource: "applications",
+        }
+)
+
+// NewArgoCDServiceReal creates a new real ArgoCDService implementation
+func NewArgoCDServiceReal(cfg *config.Config, logger *logrus.Logger) (ArgoCDService, error) <span class="cov0" title="0">{
+        // Use in-cluster config for real deployment
+        config, err := rest.InClusterConfig()
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get in-cluster config: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">client, err := dynamic.NewForConfig(config)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create dynamic client: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return &amp;argoCDService{
+                client:    client,
+                cfg:       cfg,
+                logger:    logger,
+                namespace: "argocd", // ArgoCD is typically installed in the argocd namespace
+        }, nil</span>
+}
+
+func (a *argoCDService) CreateAppProject(ctx context.Context, project *types.AppProject) error <span class="cov0" title="0">{
+        a.logger.WithField("project", project.Name).Info("Creating ArgoCD AppProject")
+
+        spec := a.buildProjectSpec(project)
+        appProject := a.buildAppProjectResource(project, spec)
+
+        _, err := a.client.Resource(appProjectGVR).Namespace(a.namespace).Create(ctx, appProject, metav1.CreateOptions{})
+        if err != nil </span><span class="cov0" title="0">{
+                if errors.IsAlreadyExists(err) </span><span class="cov0" title="0">{
+                        a.logger.WithField("project", project.Name).Info("AppProject already exists")
+                        return nil
+                }</span>
+                <span class="cov0" title="0">return fmt.Errorf("failed to create AppProject %s: %w", project.Name, err)</span>
+        }
+
+        <span class="cov0" title="0">a.logger.WithField("project", project.Name).Info("Successfully created ArgoCD AppProject")
+        return nil</span>
+}
+
+// buildProjectSpec creates the spec section for an AppProject
+func (a *argoCDService) buildProjectSpec(project *types.AppProject) map[string]interface{} <span class="cov0" title="0">{
+        spec := map[string]interface{}{
+                "sourceRepos": project.SourceRepos,
+                "destinations": []interface{}{
+                        map[string]interface{}{
+                                "namespace": project.Destinations[0].Namespace,
+                                "server":    project.Destinations[0].Server,
+                        },
+                },
+                "roles": []interface{}{
+                        map[string]interface{}{
+                                "name": "tenant-role",
+                                "policies": []string{
+                                        fmt.Sprintf("p, proj:%s:tenant-role, applications, sync, %s/*, allow", project.Name, project.Name),
+                                        fmt.Sprintf("p, proj:%s:tenant-role, applications, get, %s/*, allow", project.Name, project.Name),
+                                        fmt.Sprintf("p, proj:%s:tenant-role, applications, update, %s/*, allow", project.Name, project.Name),
+                                },
+                        },
+                },
+        }
+
+        a.addResourceRestrictions(spec, project)
+        return spec
+}</span>
+
+// addResourceRestrictions adds resource allow/deny lists to the project spec
+func (a *argoCDService) addResourceRestrictions(spec map[string]interface{}, project *types.AppProject) <span class="cov0" title="0">{
+        switch </span>{
+        case len(project.ClusterResourceWhitelist) &gt; 0 || len(project.NamespaceResourceWhitelist) &gt; 0:<span class="cov0" title="0">
+                // Use whitelist (allowList)
+                if len(project.ClusterResourceWhitelist) &gt; 0 </span><span class="cov0" title="0">{
+                        spec["clusterResourceWhitelist"] = a.convertResourceListToInterface(project.ClusterResourceWhitelist)
+                }</span>
+                <span class="cov0" title="0">if len(project.NamespaceResourceWhitelist) &gt; 0 </span><span class="cov0" title="0">{
+                        spec["namespaceResourceWhitelist"] = a.convertResourceListToInterface(project.NamespaceResourceWhitelist)
+                }</span>
+        case len(project.ClusterResourceBlacklist) &gt; 0 || len(project.NamespaceResourceBlacklist) &gt; 0:<span class="cov0" title="0">
+                // Use blacklist (denyList)
+                if len(project.ClusterResourceBlacklist) &gt; 0 </span><span class="cov0" title="0">{
+                        spec["clusterResourceBlacklist"] = a.convertResourceListToInterface(project.ClusterResourceBlacklist)
+                }</span>
+                <span class="cov0" title="0">if len(project.NamespaceResourceBlacklist) &gt; 0 </span><span class="cov0" title="0">{
+                        spec["namespaceResourceBlacklist"] = a.convertResourceListToInterface(project.NamespaceResourceBlacklist)
+                }</span>
+        default:<span class="cov0" title="0">
+                // No restrictions provided - use default secure whitelist
+                spec["clusterResourceWhitelist"] = []interface{}{}
+                spec["namespaceResourceWhitelist"] = a.buildDefaultResourceWhitelist()</span>
+        }
+}
+
+// buildDefaultResourceWhitelist returns the default secure resource whitelist
+func (a *argoCDService) buildDefaultResourceWhitelist() []interface{} <span class="cov0" title="0">{
+        return []interface{}{
+                map[string]interface{}{"group": "", "kind": "ConfigMap"},
+                map[string]interface{}{"group": "", "kind": "Secret"},
+                map[string]interface{}{"group": "", "kind": "Service"},
+                map[string]interface{}{"group": "", "kind": "ServiceAccount"},
+                map[string]interface{}{"group": "apps", "kind": "Deployment"},
+                map[string]interface{}{"group": "apps", "kind": "ReplicaSet"},
+                map[string]interface{}{"group": "batch", "kind": "Job"},
+                map[string]interface{}{"group": "batch", "kind": "CronJob"},
+                map[string]interface{}{"group": "rbac.authorization.k8s.io", "kind": "Role"},
+                map[string]interface{}{"group": "rbac.authorization.k8s.io", "kind": "RoleBinding"},
+                map[string]interface{}{"group": "networking.k8s.io", "kind": "NetworkPolicy"},
+        }
+}</span>
+
+// buildAppProjectResource creates the full AppProject unstructured resource
+func (a *argoCDService) buildAppProjectResource(project *types.AppProject, spec map[string]interface{}) *unstructured.Unstructured <span class="cov0" title="0">{
+        return &amp;unstructured.Unstructured{
+                Object: map[string]interface{}{
+                        "apiVersion": "argoproj.io/v1alpha1",
+                        "kind":       "AppProject",
+                        "metadata": map[string]interface{}{
+                                "name":      project.Name,
+                                "namespace": a.namespace,
+                                "labels": map[string]interface{}{
+                                        "gitops.io/managed-by":         "gitops-registration-service",
+                                        "app.kubernetes.io/managed-by": "gitops-registration-service",
+                                        "gitops.io/tenant":             project.Destinations[0].Namespace,
+                                },
+                        },
+                        "spec": spec,
+                },
+        }
+}</span>
+
+func (a *argoCDService) convertResourceListToInterface(resources []types.AppProjectResource) []interface{} <span class="cov0" title="0">{
+        result := make([]interface{}, len(resources))
+        for i, resource := range resources </span><span class="cov0" title="0">{
+                result[i] = map[string]interface{}{
+                        "group": resource.Group,
+                        "kind":  resource.Kind,
+                }
+        }</span>
+        <span class="cov0" title="0">return result</span>
+}
+
+// deleteResource is a helper function that handles deletion of ArgoCD resources
+func (a *argoCDService) deleteResource(ctx context.Context, name, resourceType string, gvr schema.GroupVersionResource) error <span class="cov0" title="0">{
+        a.logger.WithField(resourceType, name).Infof("Deleting ArgoCD %s", resourceType)
+
+        err := a.client.Resource(gvr).Namespace(a.namespace).Delete(ctx, name, metav1.DeleteOptions{})
+        if err != nil </span><span class="cov0" title="0">{
+                if errors.IsNotFound(err) </span><span class="cov0" title="0">{
+                        a.logger.WithField(resourceType, name).Infof("%s already deleted", resourceType)
+                        return nil
+                }</span>
+                <span class="cov0" title="0">return fmt.Errorf("failed to delete %s %s: %w", resourceType, name, err)</span>
+        }
+
+        <span class="cov0" title="0">a.logger.WithField(resourceType, name).Infof("Successfully deleted ArgoCD %s", resourceType)
+        return nil</span>
+}
+
+func (a *argoCDService) DeleteAppProject(ctx context.Context, name string) error <span class="cov0" title="0">{
+        return a.deleteResource(ctx, name, "project", appProjectGVR)
+}</span>
+
+func (a *argoCDService) CreateApplication(ctx context.Context, app *types.Application) error <span class="cov0" title="0">{
+        a.logger.WithField("application", app.Name).Info("Creating ArgoCD Application")
+
+        // Build Application resource - no kustomize needed since namespaces match
+        application := &amp;unstructured.Unstructured{
+                Object: map[string]interface{}{
+                        "apiVersion": "argoproj.io/v1alpha1",
+                        "kind":       "Application",
+                        "metadata": map[string]interface{}{
+                                "name":      app.Name,
+                                "namespace": a.namespace,
+                                "labels": map[string]interface{}{
+                                        "gitops.io/managed-by":         "gitops-registration-service",
+                                        "app.kubernetes.io/managed-by": "gitops-registration-service",
+                                        "gitops.io/tenant":             app.Destination.Namespace,
+                                },
+                        },
+                        "spec": map[string]interface{}{
+                                "project": app.Project,
+                                "source": map[string]interface{}{
+                                        "repoURL":        app.Source.RepoURL,
+                                        "targetRevision": app.Source.TargetRevision,
+                                        "path":           app.Source.Path,
+                                },
+                                "destination": map[string]interface{}{
+                                        "server":    app.Destination.Server,
+                                        "namespace": app.Destination.Namespace,
+                                },
+                                "syncPolicy": map[string]interface{}{
+                                        "automated": map[string]interface{}{
+                                                "prune":    true,
+                                                "selfHeal": true,
+                                        },
+                                        "syncOptions": []interface{}{
+                                                "CreateNamespace=false", // We create namespaces separately
+                                                "PrunePropagationPolicy=background",
+                                                "PruneLast=true",
+                                        },
+                                },
+                        },
+                },
+        }
+
+        _, err := a.client.Resource(applicationGVR).Namespace(a.namespace).Create(ctx, application, metav1.CreateOptions{})
+        if err != nil </span><span class="cov0" title="0">{
+                if errors.IsAlreadyExists(err) </span><span class="cov0" title="0">{
+                        a.logger.WithField("application", app.Name).Info("Application already exists")
+                        return nil
+                }</span>
+                <span class="cov0" title="0">return fmt.Errorf("failed to create Application %s: %w", app.Name, err)</span>
+        }
+
+        <span class="cov0" title="0">a.logger.WithField("application", app.Name).Info("Successfully created ArgoCD Application")
+        return nil</span>
+}
+
+func (a *argoCDService) DeleteApplication(ctx context.Context, name string) error <span class="cov0" title="0">{
+        return a.deleteResource(ctx, name, "Application", applicationGVR)
+}</span>
+
+// GetApplicationStatus retrieves the status of an ArgoCD Application
+func (a *argoCDService) GetApplicationStatus(ctx context.Context, name string) (*types.ApplicationStatus, error) <span class="cov0" title="0">{
+        a.logger.WithField("application", name).Info("Getting ArgoCD Application status")
+
+        app, err := a.client.Resource(applicationGVR).Namespace(a.namespace).Get(ctx, name, metav1.GetOptions{})
+        if err != nil </span><span class="cov0" title="0">{
+                if errors.IsNotFound(err) </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("application %s not found", name)
+                }</span>
+                <span class="cov0" title="0">return nil, fmt.Errorf("failed to get Application %s: %w", name, err)</span>
+        }
+
+        // Extract status information
+        <span class="cov0" title="0">status := &amp;types.ApplicationStatus{
+                Phase:   "Unknown",
+                Health:  "Unknown",
+                Sync:    "Unknown",
+                Message: "Application found",
+        }
+
+        // Try to extract health status
+        if healthStatus, found, err := unstructured.NestedString(app.Object, "status", "health", "status"); err == nil &amp;&amp; found </span><span class="cov0" title="0">{
+                status.Health = healthStatus
+        }</span>
+
+        // Try to extract sync status and last operation time
+        <span class="cov0" title="0">if operationTime, found, err := unstructured.NestedString(app.Object, "status", "operationState", "finishedAt"); err == nil &amp;&amp; found </span><span class="cov0" title="0">{
+                if timestamp, err := time.Parse(time.RFC3339, operationTime); err == nil </span><span class="cov0" title="0">{
+                        status.LastSyncTime = timestamp
+                }</span>
+        }
+
+        <span class="cov0" title="0">return status, nil</span>
+}
+
+func (a *argoCDService) HealthCheck(ctx context.Context) error <span class="cov0" title="0">{
+        // Simple health check - try to list AppProjects
+        _, err := a.client.Resource(appProjectGVR).Namespace(a.namespace).List(ctx, metav1.ListOptions{Limit: 1})
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("ArgoCD health check failed: %w", err)
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+
+// CheckAppProjectConflict checks if an AppProject exists for the given repository hash
+func (a *argoCDService) CheckAppProjectConflict(ctx context.Context, repositoryHash string) (bool, error) <span class="cov0" title="0">{
+        labelSelector := fmt.Sprintf("%s=%s", RepositoryHashLabel, repositoryHash)
+
+        appProjects, err := a.client.Resource(appProjectGVR).Namespace(a.namespace).List(ctx, metav1.ListOptions{
+                LabelSelector: labelSelector,
+        })
+        if err != nil </span><span class="cov0" title="0">{
+                return false, fmt.Errorf("failed to check AppProject conflict for repository hash %s: %w", repositoryHash, err)
+        }</span>
+
+        <span class="cov0" title="0">exists := len(appProjects.Items) &gt; 0
+        if exists </span><span class="cov0" title="0">{
+                a.logger.Infof("Found existing AppProject for repository hash %s", repositoryHash)
+        }</span>
+
+        <span class="cov0" title="0">return exists, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package services
+
+import (
+        "context"
+        "fmt"
+
+        "github.com/konflux-ci/gitops-registration-service/internal/config"
+        "github.com/sirupsen/logrus"
+        corev1 "k8s.io/api/core/v1"
+        rbacv1 "k8s.io/api/rbac/v1"
+        "k8s.io/apimachinery/pkg/api/errors"
+        metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+        "k8s.io/client-go/kubernetes"
+        "k8s.io/client-go/rest"
+)
+
+// Constants for commonly used strings
+const (
+        GitOpsRegistrationService = "gitops-registration-service"
+)
+
+// kubernetesService is the real implementation of KubernetesService
+type kubernetesService struct {
+        client kubernetes.Interface
+        cfg    *config.Config
+        logger *logrus.Logger
+}
+
+// NewKubernetesServiceReal creates a new real KubernetesService implementation
+func NewKubernetesServiceReal(cfg *config.Config, logger *logrus.Logger) (KubernetesService, error) <span class="cov0" title="0">{
+        // Create in-cluster config
+        config, err := rest.InClusterConfig()
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create in-cluster config: %w", err)
+        }</span>
+
+        // Create clientset
+        <span class="cov0" title="0">clientset, err := kubernetes.NewForConfig(config)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create kubernetes client: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return &amp;kubernetesService{
+                client: clientset,
+                cfg:    cfg,
+                logger: logger,
+        }, nil</span>
+}
+
+func (k *kubernetesService) HealthCheck(ctx context.Context) error <span class="cov0" title="0">{
+        // Check if we can reach the Kubernetes API
+        _, err := k.client.CoreV1().Namespaces().List(ctx, metav1.ListOptions{Limit: 1})
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("kubernetes api health check failed: %w", err)
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+
+func (k *kubernetesService) CreateNamespace(ctx context.Context, name string, labels map[string]string) error <span class="cov0" title="0">{
+        k.logger.WithField("namespace", name).Info("Creating namespace")
+
+        // Set up default labels
+        if labels == nil </span><span class="cov0" title="0">{
+                labels = make(map[string]string)
+        }</span>
+        <span class="cov0" title="0">labels["gitops.io/managed-by"] = GitOpsRegistrationService
+        labels["app.kubernetes.io/managed-by"] = GitOpsRegistrationService
+
+        namespace := &amp;corev1.Namespace{
+                ObjectMeta: metav1.ObjectMeta{
+                        Name:   name,
+                        Labels: labels,
+                },
+        }
+
+        _, err := k.client.CoreV1().Namespaces().Create(ctx, namespace, metav1.CreateOptions{})
+        if err != nil </span><span class="cov0" title="0">{
+                if errors.IsAlreadyExists(err) </span><span class="cov0" title="0">{
+                        k.logger.WithField("namespace", name).Info("Namespace already exists")
+                        return nil
+                }</span>
+                <span class="cov0" title="0">return fmt.Errorf("failed to create namespace %s: %w", name, err)</span>
+        }
+
+        <span class="cov0" title="0">k.logger.WithField("namespace", name).Info("Successfully created namespace")
+        return nil</span>
+}
+
+func (k *kubernetesService) CreateNamespaceWithMetadata(ctx context.Context, name string, labels, annotations map[string]string) error <span class="cov0" title="0">{
+        k.logger.WithField("namespace", name).Info("Creating namespace with metadata")
+
+        // Set up default labels
+        if labels == nil </span><span class="cov0" title="0">{
+                labels = make(map[string]string)
+        }</span>
+        <span class="cov0" title="0">labels["gitops.io/managed-by"] = GitOpsRegistrationService
+        labels["app.kubernetes.io/managed-by"] = GitOpsRegistrationService
+
+        // Set up annotations
+        if annotations == nil </span><span class="cov0" title="0">{
+                annotations = make(map[string]string)
+        }</span>
+
+        <span class="cov0" title="0">namespace := &amp;corev1.Namespace{
+                ObjectMeta: metav1.ObjectMeta{
+                        Name:        name,
+                        Labels:      labels,
+                        Annotations: annotations,
+                },
+        }
+
+        _, err := k.client.CoreV1().Namespaces().Create(ctx, namespace, metav1.CreateOptions{})
+        if err != nil </span><span class="cov0" title="0">{
+                if errors.IsAlreadyExists(err) </span><span class="cov0" title="0">{
+                        k.logger.WithField("namespace", name).Info("Namespace already exists")
+                        return nil
+                }</span>
+                <span class="cov0" title="0">return fmt.Errorf("failed to create namespace %s: %w", name, err)</span>
+        }
+
+        <span class="cov0" title="0">k.logger.WithFields(logrus.Fields{
+                "namespace":   name,
+                "labels":      labels,
+                "annotations": annotations,
+        }).Info("Successfully created namespace with metadata")
+        return nil</span>
+}
+
+func (k *kubernetesService) DeleteNamespace(ctx context.Context, name string) error <span class="cov0" title="0">{
+        k.logger.WithField("namespace", name).Info("Deleting namespace")
+
+        err := k.client.CoreV1().Namespaces().Delete(ctx, name, metav1.DeleteOptions{})
+        if err != nil </span><span class="cov0" title="0">{
+                if errors.IsNotFound(err) </span><span class="cov0" title="0">{
+                        k.logger.WithField("namespace", name).Info("Namespace already deleted")
+                        return nil
+                }</span>
+                <span class="cov0" title="0">return fmt.Errorf("failed to delete namespace %s: %w", name, err)</span>
+        }
+
+        <span class="cov0" title="0">k.logger.WithField("namespace", name).Info("Successfully deleted namespace")
+        return nil</span>
+}
+
+func (k *kubernetesService) UpdateNamespaceLabels(ctx context.Context, name string, labels map[string]string) error <span class="cov0" title="0">{
+        k.logger.WithField("namespace", name).Info("Updating namespace labels")
+
+        // Get the current namespace
+        namespace, err := k.client.CoreV1().Namespaces().Get(ctx, name, metav1.GetOptions{})
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to get namespace %s: %w", name, err)
+        }</span>
+
+        // Initialize labels if nil
+        <span class="cov0" title="0">if namespace.Labels == nil </span><span class="cov0" title="0">{
+                namespace.Labels = make(map[string]string)
+        }</span>
+
+        // Merge the new labels with existing ones
+        <span class="cov0" title="0">for key, value := range labels </span><span class="cov0" title="0">{
+                namespace.Labels[key] = value
+        }</span>
+
+        // Update the namespace
+        <span class="cov0" title="0">_, err = k.client.CoreV1().Namespaces().Update(ctx, namespace, metav1.UpdateOptions{})
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to update namespace %s labels: %w", name, err)
+        }</span>
+
+        <span class="cov0" title="0">k.logger.WithFields(logrus.Fields{
+                "namespace": name,
+                "labels":    labels,
+        }).Info("Successfully updated namespace labels")
+        return nil</span>
+}
+
+func (k *kubernetesService) UpdateNamespaceMetadata(ctx context.Context, name string, labels, annotations map[string]string) error <span class="cov0" title="0">{
+        k.logger.WithField("namespace", name).Info("Updating namespace metadata")
+
+        // Get the current namespace
+        namespace, err := k.client.CoreV1().Namespaces().Get(ctx, name, metav1.GetOptions{})
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to get namespace %s: %w", name, err)
+        }</span>
+
+        // Initialize labels and annotations if nil
+        <span class="cov0" title="0">if namespace.Labels == nil </span><span class="cov0" title="0">{
+                namespace.Labels = make(map[string]string)
+        }</span>
+        <span class="cov0" title="0">if namespace.Annotations == nil </span><span class="cov0" title="0">{
+                namespace.Annotations = make(map[string]string)
+        }</span>
+
+        // Merge the new labels with existing ones
+        <span class="cov0" title="0">for key, value := range labels </span><span class="cov0" title="0">{
+                namespace.Labels[key] = value
+        }</span>
+
+        // Merge the new annotations with existing ones
+        <span class="cov0" title="0">for key, value := range annotations </span><span class="cov0" title="0">{
+                namespace.Annotations[key] = value
+        }</span>
+
+        // Update the namespace
+        <span class="cov0" title="0">_, err = k.client.CoreV1().Namespaces().Update(ctx, namespace, metav1.UpdateOptions{})
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to update namespace %s metadata: %w", name, err)
+        }</span>
+
+        <span class="cov0" title="0">k.logger.WithFields(logrus.Fields{
+                "namespace":   name,
+                "labels":      labels,
+                "annotations": annotations,
+        }).Info("Successfully updated namespace metadata")
+        return nil</span>
+}
+
+func (k *kubernetesService) NamespaceExists(ctx context.Context, name string) (bool, error) <span class="cov0" title="0">{
+        _, err := k.client.CoreV1().Namespaces().Get(ctx, name, metav1.GetOptions{})
+        if err != nil </span><span class="cov0" title="0">{
+                if errors.IsNotFound(err) </span><span class="cov0" title="0">{
+                        return false, nil
+                }</span>
+                <span class="cov0" title="0">return false, fmt.Errorf("failed to check namespace existence: %w", err)</span>
+        }
+        <span class="cov0" title="0">return true, nil</span>
+}
+
+func (k *kubernetesService) CountNamespaces(ctx context.Context) (int, error) <span class="cov0" title="0">{
+        namespaces, err := k.client.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
+        if err != nil </span><span class="cov0" title="0">{
+                return 0, fmt.Errorf("failed to list namespaces: %w", err)
+        }</span>
+        <span class="cov0" title="0">return len(namespaces.Items), nil</span>
+}
+
+func (k *kubernetesService) CreateServiceAccount(ctx context.Context, namespace, name string) error <span class="cov0" title="0">{
+        k.logger.WithFields(logrus.Fields{
+                "namespace": namespace,
+                "name":      name,
+        }).Info("Creating service account")
+
+        serviceAccount := &amp;corev1.ServiceAccount{
+                ObjectMeta: metav1.ObjectMeta{
+                        Name:      name,
+                        Namespace: namespace,
+                        Labels: map[string]string{
+                                "gitops.io/managed-by":         GitOpsRegistrationService,
+                                "app.kubernetes.io/managed-by": GitOpsRegistrationService,
+                                "gitops.io/tenant":             namespace,
+                        },
+                },
+        }
+
+        _, err := k.client.CoreV1().ServiceAccounts(namespace).Create(ctx, serviceAccount, metav1.CreateOptions{})
+        if err != nil </span><span class="cov0" title="0">{
+                if errors.IsAlreadyExists(err) </span><span class="cov0" title="0">{
+                        k.logger.WithFields(logrus.Fields{
+                                "namespace": namespace,
+                                "name":      name,
+                        }).Info("Service account already exists")
+                        return nil
+                }</span>
+                <span class="cov0" title="0">return fmt.Errorf("failed to create service account %s in namespace %s: %w", name, namespace, err)</span>
+        }
+
+        <span class="cov0" title="0">k.logger.WithFields(logrus.Fields{
+                "namespace": namespace,
+                "name":      name,
+        }).Info("Successfully created service account")
+        return nil</span>
+}
+
+func (k *kubernetesService) CreateRoleBinding(ctx context.Context, namespace, name, role, serviceAccount string) error <span class="cov0" title="0">{
+        k.logger.WithFields(logrus.Fields{
+                "namespace":      namespace,
+                "name":           name,
+                "role":           role,
+                "serviceAccount": serviceAccount,
+        }).Info("Creating role binding")
+
+        roleBinding := &amp;rbacv1.RoleBinding{
+                ObjectMeta: metav1.ObjectMeta{
+                        Name:      name,
+                        Namespace: namespace,
+                        Labels: map[string]string{
+                                "gitops.io/managed-by":         GitOpsRegistrationService,
+                                "app.kubernetes.io/managed-by": GitOpsRegistrationService,
+                                "gitops.io/tenant":             namespace,
+                        },
+                },
+                Subjects: []rbacv1.Subject{
+                        {
+                                Kind:      "ServiceAccount",
+                                Name:      serviceAccount,
+                                Namespace: namespace,
+                        },
+                },
+                RoleRef: rbacv1.RoleRef{
+                        Kind:     "ClusterRole",
+                        Name:     role,
+                        APIGroup: "rbac.authorization.k8s.io",
+                },
+        }
+
+        _, err := k.client.RbacV1().RoleBindings(namespace).Create(ctx, roleBinding, metav1.CreateOptions{})
+        if err != nil </span><span class="cov0" title="0">{
+                if errors.IsAlreadyExists(err) </span><span class="cov0" title="0">{
+                        k.logger.WithFields(logrus.Fields{
+                                "namespace":      namespace,
+                                "name":           name,
+                                "role":           role,
+                                "serviceAccount": serviceAccount,
+                        }).Info("Role binding already exists")
+                        return nil
+                }</span>
+                <span class="cov0" title="0">return fmt.Errorf("failed to create role binding %s in namespace %s: %w", name, namespace, err)</span>
+        }
+
+        <span class="cov0" title="0">k.logger.WithFields(logrus.Fields{
+                "namespace":      namespace,
+                "name":           name,
+                "role":           role,
+                "serviceAccount": serviceAccount,
+        }).Info("Successfully created role binding")
+        return nil</span>
+}
+
+// ValidateClusterRole validates a ClusterRole and returns security warnings
+func (k *kubernetesService) ValidateClusterRole(ctx context.Context, name string) (*ClusterRoleValidation, error) <span class="cov0" title="0">{
+        validation := &amp;ClusterRoleValidation{
+                Exists:        false,
+                Warnings:      []string{},
+                ResourceTypes: []string{},
+        }
+
+        clusterRole, err := k.client.RbacV1().ClusterRoles().Get(ctx, name, metav1.GetOptions{})
+        if err != nil </span><span class="cov0" title="0">{
+                if errors.IsNotFound(err) </span><span class="cov0" title="0">{
+                        return validation, nil // Exists remains false
+                }</span>
+                <span class="cov0" title="0">return nil, fmt.Errorf("failed to get ClusterRole %s: %w", name, err)</span>
+        }
+
+        <span class="cov0" title="0">validation.Exists = true
+
+        // Analyze rules for security issues
+        for _, rule := range clusterRole.Rules </span><span class="cov0" title="0">{
+                k.checkClusterAdminPermissions(rule, validation)
+                k.checkNamespaceSpanningPermissions(rule, validation)
+                k.checkClusterScopedPermissions(rule, validation)
+                validation.ResourceTypes = append(validation.ResourceTypes, rule.Resources...)
+        }</span>
+
+        <span class="cov0" title="0">return validation, nil</span>
+}
+
+// checkClusterAdminPermissions checks for cluster-admin level permissions
+func (k *kubernetesService) checkClusterAdminPermissions(rule rbacv1.PolicyRule, validation *ClusterRoleValidation) <span class="cov0" title="0">{
+        if containsAll(rule.Verbs, []string{"*"}) &amp;&amp; containsAll(rule.Resources, []string{"*"}) </span><span class="cov0" title="0">{
+                validation.HasClusterAdmin = true
+                validation.Warnings = append(validation.Warnings, "ClusterRole has cluster-admin level permissions (*/* resources)")
+        }</span>
+}
+
+// checkNamespaceSpanningPermissions checks for namespace-spanning permissions
+func (k *kubernetesService) checkNamespaceSpanningPermissions(rule rbacv1.PolicyRule, validation *ClusterRoleValidation) <span class="cov0" title="0">{
+        if !contains(rule.Verbs, "list") &amp;&amp; !contains(rule.Verbs, "watch") </span><span class="cov0" title="0">{
+                return
+        }</span>
+
+        <span class="cov0" title="0">for _, resource := range rule.Resources </span><span class="cov0" title="0">{
+                if resource == "namespaces" || resource == "*" </span><span class="cov0" title="0">{
+                        validation.HasNamespaceSpanning = true
+                        validation.Warnings = append(validation.Warnings, "ClusterRole can list/watch across namespaces")
+                        break</span>
+                }
+        }
+}
+
+// checkClusterScopedPermissions checks for cluster-scoped resource modification
+func (k *kubernetesService) checkClusterScopedPermissions(rule rbacv1.PolicyRule, validation *ClusterRoleValidation) <span class="cov0" title="0">{
+        clusterScopedResources := []string{"nodes", "namespaces", "clusterroles", "clusterrolebindings", "persistentvolumes"}
+
+        modifyingVerbs := []string{"create", "update", "delete", "patch"}
+        hasModifyingVerb := false
+        for _, verb := range modifyingVerbs </span><span class="cov0" title="0">{
+                if contains(rule.Verbs, verb) </span><span class="cov0" title="0">{
+                        hasModifyingVerb = true
+                        break</span>
+                }
+        }
+
+        <span class="cov0" title="0">if !hasModifyingVerb </span><span class="cov0" title="0">{
+                return
+        }</span>
+
+        <span class="cov0" title="0">for _, resource := range rule.Resources </span><span class="cov0" title="0">{
+                if contains(clusterScopedResources, resource) || resource == "*" </span><span class="cov0" title="0">{
+                        validation.HasClusterScoped = true
+                        validation.Warnings = append(validation.Warnings, fmt.Sprintf("ClusterRole can modify cluster-scoped resource: %s", resource))
+                }</span>
+        }
+}
+
+// CreateServiceAccountWithGenerateName creates a service account with generated name
+func (k *kubernetesService) CreateServiceAccountWithGenerateName(ctx context.Context, namespace, baseName string) (string, error) <span class="cov0" title="0">{
+        sa := &amp;corev1.ServiceAccount{
+                ObjectMeta: metav1.ObjectMeta{
+                        GenerateName: baseName + "-",
+                        Namespace:    namespace,
+                        Labels: map[string]string{
+                                "gitops.io/managed-by": GitOpsRegistrationService,
+                                "gitops.io/purpose":    "impersonation",
+                        },
+                },
+        }
+
+        created, err := k.client.CoreV1().ServiceAccounts(namespace).Create(ctx, sa, metav1.CreateOptions{})
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to create service account in namespace %s: %w", namespace, err)
+        }</span>
+
+        <span class="cov0" title="0">k.logger.Infof("Created service account %s in namespace %s", created.Name, namespace)
+        return created.Name, nil</span>
+}
+
+// CreateRoleBindingForServiceAccount creates a RoleBinding binding a ClusterRole to a ServiceAccount
+func (k *kubernetesService) CreateRoleBindingForServiceAccount(ctx context.Context, namespace, name, clusterRole, serviceAccountName string) error <span class="cov0" title="0">{
+        roleBinding := &amp;rbacv1.RoleBinding{
+                ObjectMeta: metav1.ObjectMeta{
+                        Name:      name,
+                        Namespace: namespace,
+                        Labels: map[string]string{
+                                "gitops.io/managed-by": GitOpsRegistrationService,
+                                "gitops.io/purpose":    "impersonation",
+                        },
+                },
+                Subjects: []rbacv1.Subject{
+                        {
+                                Kind:      "ServiceAccount",
+                                Name:      serviceAccountName,
+                                Namespace: namespace,
+                        },
+                },
+                RoleRef: rbacv1.RoleRef{
+                        APIGroup: "rbac.authorization.k8s.io",
+                        Kind:     "ClusterRole",
+                        Name:     clusterRole,
+                },
+        }
+
+        _, err := k.client.RbacV1().RoleBindings(namespace).Create(ctx, roleBinding, metav1.CreateOptions{})
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to create RoleBinding %s in namespace %s: %w", name, namespace, err)
+        }</span>
+
+        <span class="cov0" title="0">k.logger.Infof("Created RoleBinding %s in namespace %s", name, namespace)
+        return nil</span>
+}
+
+// CheckAppProjectConflict checks if an AppProject exists for the given repository hash
+func (k *kubernetesService) CheckAppProjectConflict(ctx context.Context, repositoryHash string) (bool, error) <span class="cov0" title="0">{
+        // This is a placeholder - the actual implementation would use ArgoCD client
+        // to check for AppProjects with the repository hash label
+        // For now, we'll implement this in the ArgoCD service
+        return false, nil
+}</span>
+
+// Helper functions
+func contains(slice []string, item string) bool <span class="cov0" title="0">{
+        for _, s := range slice </span><span class="cov0" title="0">{
+                if s == item || s == "*" </span><span class="cov0" title="0">{
+                        return true
+                }</span>
+        }
+        <span class="cov0" title="0">return false</span>
+}
+
+func containsAll(slice, items []string) bool <span class="cov0" title="0">{
+        for _, item := range items </span><span class="cov0" title="0">{
+                if !contains(slice, item) </span><span class="cov0" title="0">{
+                        return false
+                }</span>
+        }
+        <span class="cov0" title="0">return true</span>
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package services
+
+import (
+        "context"
+        "crypto/sha256"
+        "fmt"
+        "net/url"
+        "strings"
+        "time"
+
+        "github.com/google/uuid"
+        "github.com/konflux-ci/gitops-registration-service/internal/config"
+        "github.com/konflux-ci/gitops-registration-service/internal/types"
+        "github.com/sirupsen/logrus"
+)
+
+// Constants for commonly used strings
+const (
+        StatusFailed = "failed"
+)
+
+// NamespaceConflictError represents a namespace already exists error
+type NamespaceConflictError struct {
+        Namespace string
+}
+
+func (e *NamespaceConflictError) Error() string <span class="cov0" title="0">{
+        return fmt.Sprintf("namespace %s already exists", e.Namespace)
+}</span>
+
+// extractRepositoryDomain extracts a label-safe domain from a repository URL
+func extractRepositoryDomain(repoURL string) string <span class="cov0" title="0">{
+        parsed, err := url.Parse(repoURL)
+        if err != nil </span><span class="cov0" title="0">{
+                // If URL parsing fails, create a safe fallback
+                return strings.ReplaceAll(strings.ReplaceAll(repoURL, ":", "-"), "/", "-")
+        }</span>
+
+        <span class="cov0" title="0">domain := parsed.Host
+        if domain == "" </span><span class="cov0" title="0">{
+                domain = "unknown"
+        }</span>
+
+        // Make domain label-safe: only alphanumeric, hyphens, dots, and underscores
+        <span class="cov0" title="0">domain = strings.ReplaceAll(domain, ":", "-")
+
+        // Truncate if too long (Kubernetes labels must be 63 chars or less)
+        if len(domain) &gt; 63 </span><span class="cov0" title="0">{
+                domain = domain[:63]
+        }</span>
+
+        <span class="cov0" title="0">return domain</span>
+}
+
+// registrationService is the real implementation of RegistrationService
+type registrationService struct {
+        cfg    *config.Config
+        k8s    KubernetesService
+        argocd ArgoCDService
+        logger *logrus.Logger
+}
+
+// NewRegistrationServiceReal creates a new real RegistrationService implementation
+func NewRegistrationServiceReal(
+        cfg *config.Config, k8s KubernetesService, argocd ArgoCDService, logger *logrus.Logger,
+) RegistrationService <span class="cov8" title="1">{
+        return &amp;registrationService{
+                cfg:    cfg,
+                k8s:    k8s,
+                argocd: argocd,
+                logger: logger,
+        }
+}</span>
+
+func (r *registrationService) CreateRegistration(ctx context.Context, req *types.RegistrationRequest) (*types.Registration, error) <span class="cov0" title="0">{
+        registrationID := uuid.New().String()
+
+        r.logger.WithFields(logrus.Fields{
+                "namespace":      req.Namespace,
+                "repository":     req.Repository.URL,
+                "registrationID": registrationID,
+        }).Info("Creating registration")
+
+        // Step 1: Check for repository conflicts
+        if err := r.checkRepositoryConflicts(ctx, req.Repository.URL); err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        // Step 2: Validate namespace availability
+        <span class="cov0" title="0">if err := r.validateNamespaceAvailability(ctx, req.Namespace); err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        // Step 3: Create registration record
+        <span class="cov0" title="0">registration := r.buildRegistrationRecord(registrationID, req)
+
+        // Step 4: Setup namespace with metadata
+        if err := r.setupNamespace(ctx, req, registrationID); err != nil </span><span class="cov0" title="0">{
+                registration.Status.Phase = StatusFailed
+                registration.Status.Message = fmt.Sprintf("Failed to create namespace: %v", err)
+                return nil, fmt.Errorf("failed to create namespace: %w", err)
+        }</span>
+
+        // Step 5: Setup service account and role binding
+        <span class="cov0" title="0">serviceAccountName, err := r.setupServiceAccount(ctx, req.Namespace)
+        if err != nil </span><span class="cov0" title="0">{
+                registration.Status.Phase = StatusFailed
+                registration.Status.Message = fmt.Sprintf("Failed to setup service account: %v", err)
+                if deleteErr := r.k8s.DeleteNamespace(ctx, req.Namespace); deleteErr != nil </span><span class="cov0" title="0">{
+                        r.logger.WithError(deleteErr).Error("Failed to cleanup namespace")
+                }</span>
+                <span class="cov0" title="0">return nil, fmt.Errorf("failed to setup service account: %w", err)</span>
+        }
+
+        // Step 6: Setup ArgoCD resources
+        <span class="cov0" title="0">appName, projectName, err := r.setupArgoCDResources(ctx, req, serviceAccountName)
+        if err != nil </span><span class="cov0" title="0">{
+                registration.Status.Phase = StatusFailed
+                registration.Status.Message = fmt.Sprintf("Failed to setup ArgoCD resources: %v", err)
+                if deleteErr := r.k8s.DeleteNamespace(ctx, req.Namespace); deleteErr != nil </span><span class="cov0" title="0">{
+                        r.logger.WithError(deleteErr).Error("Failed to cleanup namespace")
+                }</span>
+                <span class="cov0" title="0">return nil, fmt.Errorf("failed to setup ArgoCD resources: %w", err)</span>
+        }
+
+        // Step 7: Finalize registration
+        <span class="cov0" title="0">r.finalizeRegistration(registration, appName, projectName, serviceAccountName)
+
+        r.logger.WithFields(logrus.Fields{
+                "namespace":         req.Namespace,
+                "registrationID":    registrationID,
+                "argoCDApplication": appName,
+                "argoCDAppProject":  projectName,
+                "serviceAccount":    serviceAccountName,
+                "impersonation":     r.cfg.Security.Impersonation.Enabled,
+        }).Info("Successfully completed registration")
+
+        return registration, nil</span>
+}
+
+// checkRepositoryConflicts validates repository availability if impersonation is enabled
+func (r *registrationService) checkRepositoryConflicts(ctx context.Context, repoURL string) error <span class="cov0" title="0">{
+        if !r.cfg.Security.Impersonation.Enabled </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+
+        <span class="cov0" title="0">repoHash := GenerateRepositoryHash(repoURL)
+        conflictExists, err := r.argocd.CheckAppProjectConflict(ctx, repoHash)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to check repository conflict: %w", err)
+        }</span>
+        <span class="cov0" title="0">if conflictExists </span><span class="cov0" title="0">{
+                return fmt.Errorf("repository %s is already registered in another AppProject", repoURL)
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+
+// validateNamespaceAvailability checks if the namespace already exists
+func (r *registrationService) validateNamespaceAvailability(ctx context.Context, namespace string) error <span class="cov0" title="0">{
+        exists, err := r.k8s.NamespaceExists(ctx, namespace)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to check namespace existence: %w", err)
+        }</span>
+        <span class="cov0" title="0">if exists </span><span class="cov0" title="0">{
+                return &amp;NamespaceConflictError{Namespace: namespace}
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+
+// buildRegistrationRecord creates the initial registration record
+func (r *registrationService) buildRegistrationRecord(registrationID string, req *types.RegistrationRequest) *types.Registration <span class="cov0" title="0">{
+        return &amp;types.Registration{
+                ID:        registrationID,
+                Namespace: req.Namespace,
+                Repository: types.Repository{
+                        URL:    req.Repository.URL,
+                        Branch: req.Repository.Branch,
+                },
+                Status: types.RegistrationStatus{
+                        Phase:   "creating",
+                        Message: "Registration in progress",
+                },
+                CreatedAt: time.Now(),
+                UpdatedAt: time.Now(),
+                Labels: map[string]string{
+                        "gitops.io/managed-by":         "gitops-registration-service",
+                        "app.kubernetes.io/managed-by": "gitops-registration-service",
+                },
+        }
+}</span>
+
+// setupNamespace creates the namespace with proper metadata
+func (r *registrationService) setupNamespace(ctx context.Context, req *types.RegistrationRequest, registrationID string) error <span class="cov0" title="0">{
+        r.logger.WithField("namespace", req.Namespace).Info("Creating namespace")
+
+        repoHash := fmt.Sprintf("%x", sha256.Sum256([]byte(req.Repository.URL)))[:8]
+        repoDomain := extractRepositoryDomain(req.Repository.URL)
+
+        namespaceLabels := map[string]string{
+                "gitops.io/registration-id":    registrationID[:8],
+                "gitops.io/repository-hash":    repoHash,
+                "gitops.io/repository-domain":  repoDomain,
+                "gitops.io/managed-by":         "gitops-registration-service",
+                "app.kubernetes.io/managed-by": "gitops-registration-service",
+        }
+
+        namespaceAnnotations := map[string]string{
+                "gitops.io/repository-url":    req.Repository.URL,
+                "gitops.io/repository-branch": req.Repository.Branch,
+                "gitops.io/registration-id":   registrationID,
+        }
+
+        return r.k8s.CreateNamespaceWithMetadata(ctx, req.Namespace, namespaceLabels, namespaceAnnotations)
+}</span>
+
+// setupServiceAccount creates service account and role binding with or without impersonation
+func (r *registrationService) setupServiceAccount(ctx context.Context, namespace string) (string, error) <span class="cov0" title="0">{
+        if r.cfg.Security.Impersonation.Enabled </span><span class="cov0" title="0">{
+                return r.setupServiceAccountWithImpersonation(ctx, namespace)
+        }</span>
+        <span class="cov0" title="0">return r.setupLegacyServiceAccount(ctx, namespace)</span>
+}
+
+// setupServiceAccountWithImpersonation creates service account with impersonation support
+func (r *registrationService) setupServiceAccountWithImpersonation(ctx context.Context, namespace string) (string, error) <span class="cov0" title="0">{
+        r.logger.WithField("namespace", namespace).Info("Creating service account with impersonation")
+
+        baseName := r.cfg.Security.Impersonation.ServiceAccountBaseName
+        generatedName, err := r.k8s.CreateServiceAccountWithGenerateName(ctx, namespace, baseName)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to create service account: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">roleBindingName := fmt.Sprintf("%s-binding", generatedName)
+        clusterRole := r.cfg.Security.Impersonation.ClusterRole
+        if err := r.k8s.CreateRoleBindingForServiceAccount(ctx, namespace, roleBindingName, clusterRole, generatedName); err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to create role binding: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return generatedName, nil</span>
+}
+
+// setupLegacyServiceAccount creates service account with legacy behavior
+func (r *registrationService) setupLegacyServiceAccount(ctx context.Context, namespace string) (string, error) <span class="cov0" title="0">{
+        serviceAccountName := "gitops"
+        if err := r.k8s.CreateServiceAccount(ctx, namespace, serviceAccountName); err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to create service account: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">roleBindingName := "gitops-binding"
+        if err := r.k8s.CreateRoleBinding(ctx, namespace, roleBindingName, "gitops-role", serviceAccountName); err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to create role binding: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return serviceAccountName, nil</span>
+}
+
+// setupArgoCDResources creates ArgoCD AppProject and Application
+func (r *registrationService) setupArgoCDResources(ctx context.Context, req *types.RegistrationRequest, serviceAccountName string) (appName, projectName string, err error) <span class="cov0" title="0">{
+        projectName = req.Namespace
+        appProject := r.buildAppProject(projectName, req.Namespace, req.Repository.URL, serviceAccountName)
+
+        if err := r.argocd.CreateAppProject(ctx, appProject); err != nil </span><span class="cov0" title="0">{
+                return "", "", fmt.Errorf("failed to create ArgoCD AppProject: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">appName = fmt.Sprintf("%s-app", req.Namespace)
+        application := &amp;types.Application{
+                Name:    appName,
+                Project: projectName,
+                Source: types.ApplicationSource{
+                        RepoURL:        req.Repository.URL,
+                        TargetRevision: req.Repository.Branch,
+                        Path:           "manifests",
+                },
+                Destination: types.ApplicationDestination{
+                        Server:    "https://kubernetes.default.svc",
+                        Namespace: req.Namespace,
+                },
+        }
+
+        if err := r.argocd.CreateApplication(ctx, application); err != nil </span><span class="cov0" title="0">{
+                return "", "", fmt.Errorf("failed to create ArgoCD Application: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return appName, projectName, nil</span>
+}
+
+// finalizeRegistration updates the registration record with success status
+func (r *registrationService) finalizeRegistration(registration *types.Registration, appName, projectName, serviceAccountName string) <span class="cov0" title="0">{
+        registration.Status.Phase = "active"
+        registration.Status.Message = "Registration completed successfully"
+        registration.Status.ArgoCDApplication = appName
+        registration.Status.ArgoCDAppProject = projectName
+        registration.Status.LastSyncTime = time.Now()
+        registration.Status.NamespaceCreated = true
+        registration.Status.AppProjectCreated = true
+        registration.Status.ApplicationCreated = true
+        registration.UpdatedAt = time.Now()
+}</span>
+
+func (r *registrationService) GetRegistration(ctx context.Context, id string) (*types.Registration, error) <span class="cov0" title="0">{
+        // For now, return a simple stub - in a real implementation this would query a database
+        return &amp;types.Registration{
+                ID: id,
+                Status: types.RegistrationStatus{
+                        Phase:   "active",
+                        Message: "Registration found",
+                },
+        }, nil
+}</span>
+
+func (r *registrationService) ListRegistrations(
+        ctx context.Context, filters map[string]string,
+) ([]*types.Registration, error) <span class="cov0" title="0">{
+        // For now, return a simple stub - in a real implementation this would query a database
+        return []*types.Registration{}, nil
+}</span>
+
+func (r *registrationService) DeleteRegistration(ctx context.Context, id string) error <span class="cov0" title="0">{
+        // For now, return nil - in a real implementation this would clean up resources
+        r.logger.WithField("registrationID", id).Info("Registration deletion (stub)")
+        return nil
+}</span>
+
+func (r *registrationService) RegisterExistingNamespace(ctx context.Context, req *types.ExistingNamespaceRequest, userInfo *types.UserInfo) (*types.Registration, error) <span class="cov0" title="0">{
+        registrationID := uuid.New().String()
+
+        r.logger.WithFields(logrus.Fields{
+                "namespace":      req.ExistingNamespace,
+                "repository":     req.Repository.URL,
+                "registrationID": registrationID,
+                "user":           userInfo.Username,
+        }).Info("Converting existing namespace to GitOps management")
+
+        // Step 1: Validate namespace exists
+        if err := r.validateExistingNamespace(ctx, req.ExistingNamespace); err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        // Step 2: Create registration record
+        <span class="cov0" title="0">registration := r.buildExistingNamespaceRegistration(registrationID, req)
+
+        // Step 3: Setup service account in existing namespace
+        if err := r.setupServiceAccountInExistingNamespace(ctx, req.ExistingNamespace); err != nil </span><span class="cov0" title="0">{
+                registration.Status.Phase = StatusFailed
+                registration.Status.Message = fmt.Sprintf("Failed to setup service account: %v", err)
+                return nil, fmt.Errorf("failed to setup service account: %w", err)
+        }</span>
+
+        // Step 4: Update namespace metadata
+        <span class="cov0" title="0">r.updateExistingNamespaceMetadata(ctx, req, registrationID)
+
+        // Step 5: Setup ArgoCD resources
+        appName, projectName, err := r.setupArgoCDResourcesForExistingNamespace(ctx, req)
+        if err != nil </span><span class="cov0" title="0">{
+                registration.Status.Phase = StatusFailed
+                registration.Status.Message = fmt.Sprintf("Failed to setup ArgoCD resources: %v", err)
+                if deleteErr := r.k8s.DeleteNamespace(ctx, req.ExistingNamespace); deleteErr != nil </span><span class="cov0" title="0">{
+                        r.logger.WithError(deleteErr).Error("Failed to cleanup namespace")
+                }</span>
+                <span class="cov0" title="0">return nil, fmt.Errorf("failed to setup ArgoCD resources: %w", err)</span>
+        }
+
+        // Step 6: Finalize registration for existing namespace
+        <span class="cov0" title="0">r.finalizeExistingNamespaceRegistration(registration, appName, projectName, userInfo)
+
+        r.logger.WithFields(logrus.Fields{
+                "namespace":         req.ExistingNamespace,
+                "registrationID":    registrationID,
+                "argoCDApplication": appName,
+                "argoCDAppProject":  projectName,
+                "user":              userInfo.Username,
+        }).Info("Successfully converted existing namespace to GitOps management")
+
+        return registration, nil</span>
+}
+
+// validateExistingNamespace checks if the namespace exists
+func (r *registrationService) validateExistingNamespace(ctx context.Context, namespace string) error <span class="cov0" title="0">{
+        exists, err := r.k8s.NamespaceExists(ctx, namespace)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to check namespace existence: %w", err)
+        }</span>
+        <span class="cov0" title="0">if !exists </span><span class="cov0" title="0">{
+                return fmt.Errorf("namespace %s does not exist", namespace)
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+
+// buildExistingNamespaceRegistration creates the registration record for existing namespace
+func (r *registrationService) buildExistingNamespaceRegistration(registrationID string, req *types.ExistingNamespaceRequest) *types.Registration <span class="cov0" title="0">{
+        return &amp;types.Registration{
+                ID:        registrationID,
+                Namespace: req.ExistingNamespace,
+                Repository: types.Repository{
+                        URL:    req.Repository.URL,
+                        Branch: req.Repository.Branch,
+                },
+                Status: types.RegistrationStatus{
+                        Phase:   "creating",
+                        Message: "Converting existing namespace to GitOps management",
+                },
+                CreatedAt: time.Now(),
+                UpdatedAt: time.Now(),
+                Labels: map[string]string{
+                        "gitops.io/managed-by":         "gitops-registration-service",
+                        "app.kubernetes.io/managed-by": "gitops-registration-service",
+                },
+        }
+}</span>
+
+// setupServiceAccountInExistingNamespace creates service account and role binding
+func (r *registrationService) setupServiceAccountInExistingNamespace(ctx context.Context, namespace string) error <span class="cov0" title="0">{
+        r.logger.WithField("namespace", namespace).Info("Creating service account in existing namespace")
+
+        serviceAccountName := "gitops"
+        if err := r.k8s.CreateServiceAccount(ctx, namespace, serviceAccountName); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to create service account: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">roleBindingName := "gitops-binding"
+        if err := r.k8s.CreateRoleBinding(ctx, namespace, roleBindingName, "gitops-role", serviceAccountName); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to create role binding: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// updateExistingNamespaceMetadata adds GitOps metadata to the existing namespace
+func (r *registrationService) updateExistingNamespaceMetadata(ctx context.Context, req *types.ExistingNamespaceRequest, registrationID string) <span class="cov0" title="0">{
+        r.logger.WithField("namespace", req.ExistingNamespace).Info("Adding GitOps metadata to existing namespace")
+
+        repoHash := fmt.Sprintf("%x", sha256.Sum256([]byte(req.Repository.URL)))[:8]
+        repoDomain := extractRepositoryDomain(req.Repository.URL)
+
+        namespaceLabels := map[string]string{
+                "gitops.io/registration-id":    registrationID[:8],
+                "gitops.io/repository-hash":    repoHash,
+                "gitops.io/repository-domain":  repoDomain,
+                "gitops.io/managed-by":         "gitops-registration-service",
+                "app.kubernetes.io/managed-by": "gitops-registration-service",
+        }
+
+        namespaceAnnotations := map[string]string{
+                "gitops.io/repository-url":    req.Repository.URL,
+                "gitops.io/repository-branch": req.Repository.Branch,
+                "gitops.io/registration-id":   registrationID,
+        }
+
+        err := r.k8s.UpdateNamespaceMetadata(ctx, req.ExistingNamespace, namespaceLabels, namespaceAnnotations)
+        if err != nil </span><span class="cov0" title="0">{
+                r.logger.WithError(err).WithField("namespace", req.ExistingNamespace).Warn("Failed to update namespace metadata, continuing...")
+        }</span>
+}
+
+// setupArgoCDResourcesForExistingNamespace creates ArgoCD AppProject and Application for existing namespace
+func (r *registrationService) setupArgoCDResourcesForExistingNamespace(ctx context.Context, req *types.ExistingNamespaceRequest) (appName, projectName string, err error) <span class="cov0" title="0">{
+        projectName = req.ExistingNamespace
+        appProject := r.buildAppProject(projectName, req.ExistingNamespace, req.Repository.URL, "gitops")
+
+        if err := r.argocd.CreateAppProject(ctx, appProject); err != nil </span><span class="cov0" title="0">{
+                return "", "", fmt.Errorf("failed to create ArgoCD AppProject: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">appName = fmt.Sprintf("%s-app", req.ExistingNamespace)
+        application := &amp;types.Application{
+                Name:    appName,
+                Project: projectName,
+                Source: types.ApplicationSource{
+                        RepoURL:        req.Repository.URL,
+                        TargetRevision: req.Repository.Branch,
+                        Path:           "manifests",
+                },
+                Destination: types.ApplicationDestination{
+                        Server:    "https://kubernetes.default.svc",
+                        Namespace: req.ExistingNamespace,
+                },
+        }
+
+        if err := r.argocd.CreateApplication(ctx, application); err != nil </span><span class="cov0" title="0">{
+                return "", "", fmt.Errorf("failed to create ArgoCD Application: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return appName, projectName, nil</span>
+}
+
+// finalizeExistingNamespaceRegistration updates the registration record with success status
+func (r *registrationService) finalizeExistingNamespaceRegistration(registration *types.Registration, appName, projectName string, userInfo *types.UserInfo) <span class="cov0" title="0">{
+        registration.Status.Phase = "active"
+        registration.Status.Message = "Existing namespace successfully converted to GitOps management"
+        registration.Status.ArgoCDApplication = appName
+        registration.Status.ArgoCDAppProject = projectName
+        registration.Status.LastSyncTime = time.Now()
+        registration.Status.NamespaceCreated = false // Existing namespace, not created by us
+        registration.Status.AppProjectCreated = true
+        registration.Status.ApplicationCreated = true
+        registration.UpdatedAt = time.Now()
+}</span>
+
+func (r *registrationService) ValidateRegistration(ctx context.Context, req *types.RegistrationRequest) error <span class="cov8" title="1">{
+        // Basic validation
+        if req.Namespace == "" </span><span class="cov8" title="1">{
+                return fmt.Errorf("namespace is required")
+        }</span>
+        <span class="cov8" title="1">if req.Repository.URL == "" </span><span class="cov8" title="1">{
+                return fmt.Errorf("repository URL is required")
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+func (r *registrationService) ValidateExistingNamespaceRequest(
+        ctx context.Context, req *types.ExistingNamespaceRequest,
+) error <span class="cov8" title="1">{
+        // Basic validation
+        if req.ExistingNamespace == "" </span><span class="cov8" title="1">{
+                return fmt.Errorf("existingNamespace is required")
+        }</span>
+        <span class="cov8" title="1">if req.Repository.URL == "" </span><span class="cov8" title="1">{
+                return fmt.Errorf("repository URL is required")
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+func (r *registrationService) buildAppProject(
+        projectName, namespace, repoURL, serviceAccountName string,
+) *types.AppProject <span class="cov8" title="1">{
+        // Generate repository hash for labeling
+        repoHash := GenerateRepositoryHash(repoURL)
+
+        appProject := &amp;types.AppProject{
+                Name:      projectName,
+                Namespace: r.cfg.ArgoCD.Namespace, // AppProjects live in ArgoCD namespace
+                Labels: map[string]string{
+                        RepositoryHashLabel:            repoHash,
+                        "gitops.io/managed-by":         "gitops-registration-service",
+                        "app.kubernetes.io/managed-by": "gitops-registration-service",
+                },
+                Destinations: []types.AppProjectDestination{
+                        {
+                                Server:    "https://kubernetes.default.svc",
+                                Namespace: namespace,
+                        },
+                },
+                SourceRepos: []string{repoURL},
+        }
+
+        // Add impersonation support if enabled
+        if r.cfg.Security.Impersonation.Enabled </span><span class="cov8" title="1">{
+                appProject.DestinationServiceAccounts = []types.AppProjectDestinationServiceAccount{
+                        {
+                                Server:                "https://kubernetes.default.svc",
+                                Namespace:             namespace,
+                                DefaultServiceAccount: serviceAccountName,
+                        },
+                }
+        }</span>
+
+        // Configure resource restrictions based on service-level configuration
+        <span class="cov8" title="1">if len(r.cfg.Security.ResourceAllowList) &gt; 0 </span><span class="cov8" title="1">{
+                // If allowList is provided, use it as whitelist
+                appProject.ClusterResourceWhitelist = r.convertServiceResourceRestrictions(r.cfg.Security.ResourceAllowList)
+                appProject.NamespaceResourceWhitelist = r.convertServiceResourceRestrictions(r.cfg.Security.ResourceAllowList)
+        }</span> else<span class="cov8" title="1"> if len(r.cfg.Security.ResourceDenyList) &gt; 0 </span><span class="cov8" title="1">{
+                // If denyList is provided, use it as blacklist
+                appProject.ClusterResourceBlacklist = r.convertServiceResourceRestrictions(r.cfg.Security.ResourceDenyList)
+                appProject.NamespaceResourceBlacklist = r.convertServiceResourceRestrictions(r.cfg.Security.ResourceDenyList)
+        }</span>
+        // If no restrictions provided, allow all resources by not setting any whitelist
+        // This is the default behavior - no restrictions
+
+        <span class="cov8" title="1">return appProject</span>
+}
+
+// convertServiceResourceRestrictions converts service config resource restrictions to AppProject format
+func (r *registrationService) convertServiceResourceRestrictions(restrictions []config.ServiceResourceRestriction) []types.AppProjectResource <span class="cov8" title="1">{
+        result := make([]types.AppProjectResource, len(restrictions))
+        for i, restriction := range restrictions </span><span class="cov8" title="1">{
+                result[i] = types.AppProjectResource{
+                        Group: restriction.Group,
+                        Kind:  restriction.Kind,
+                }
+        }</span>
+        <span class="cov8" title="1">return result</span>
+}
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">package services
+
+import (
+        "context"
+        "crypto/sha256"
+        "fmt"
+
+        "github.com/konflux-ci/gitops-registration-service/internal/config"
+        "github.com/konflux-ci/gitops-registration-service/internal/types"
+        "github.com/sirupsen/logrus"
+)
+
+// Constants for impersonation labels and annotations
+const (
+        RepositoryHashLabel = "gitops.io/repository-hash"
+        ServiceAccountLabel = "gitops.io/service-account"
+)
+
+// GenerateRepositoryHash creates a consistent hash for repository URLs
+func GenerateRepositoryHash(repositoryURL string) string <span class="cov8" title="1">{
+        hash := sha256.Sum256([]byte(repositoryURL))
+        return fmt.Sprintf("%x", hash)[:8] // Use first 8 characters for readability
+}</span>
+
+// Services holds all service dependencies
+type Services struct {
+        Kubernetes          KubernetesService
+        ArgoCD              ArgoCDService
+        Registration        RegistrationService
+        RegistrationControl RegistrationControlService
+        Authorization       AuthorizationService
+}
+
+// KubernetesService interface for Kubernetes operations
+type KubernetesService interface {
+        HealthCheck(ctx context.Context) error
+        CreateNamespace(ctx context.Context, name string, labels map[string]string) error
+        CreateNamespaceWithMetadata(ctx context.Context, name string, labels, annotations map[string]string) error
+        UpdateNamespaceLabels(ctx context.Context, name string, labels map[string]string) error
+        UpdateNamespaceMetadata(ctx context.Context, name string, labels, annotations map[string]string) error
+        DeleteNamespace(ctx context.Context, name string) error
+        NamespaceExists(ctx context.Context, name string) (bool, error)
+        CountNamespaces(ctx context.Context) (int, error)
+        CreateServiceAccount(ctx context.Context, namespace, name string) error
+        CreateRoleBinding(ctx context.Context, namespace, name, role, serviceAccount string) error
+        // New impersonation methods
+        ValidateClusterRole(ctx context.Context, name string) (*ClusterRoleValidation, error)
+        CreateServiceAccountWithGenerateName(ctx context.Context, namespace, baseName string) (string, error)
+        CreateRoleBindingForServiceAccount(ctx context.Context, namespace, name, clusterRole, serviceAccountName string) error
+        CheckAppProjectConflict(ctx context.Context, repositoryHash string) (bool, error)
+}
+
+// ArgoCDService interface for ArgoCD operations
+type ArgoCDService interface {
+        HealthCheck(ctx context.Context) error
+        CreateAppProject(ctx context.Context, project *types.AppProject) error
+        DeleteAppProject(ctx context.Context, name string) error
+        CreateApplication(ctx context.Context, app *types.Application) error
+        DeleteApplication(ctx context.Context, name string) error
+        GetApplicationStatus(ctx context.Context, name string) (*types.ApplicationStatus, error)
+        // New impersonation method
+        CheckAppProjectConflict(ctx context.Context, repositoryHash string) (bool, error)
+}
+
+// RegistrationService interface for registration management
+type RegistrationService interface {
+        CreateRegistration(ctx context.Context, req *types.RegistrationRequest) (*types.Registration, error)
+        GetRegistration(ctx context.Context, id string) (*types.Registration, error)
+        ListRegistrations(ctx context.Context, filters map[string]string) ([]*types.Registration, error)
+        DeleteRegistration(ctx context.Context, id string) error
+        RegisterExistingNamespace(
+                ctx context.Context, req *types.ExistingNamespaceRequest, userInfo *types.UserInfo,
+        ) (*types.Registration, error)
+        ValidateRegistration(ctx context.Context, req *types.RegistrationRequest) error
+        ValidateExistingNamespaceRequest(ctx context.Context, req *types.ExistingNamespaceRequest) error
+}
+
+// RegistrationControlService interface for registration control
+type RegistrationControlService interface {
+        GetRegistrationStatus(ctx context.Context) (*types.ServiceRegistrationStatus, error)
+        IsNewNamespaceAllowed(ctx context.Context) error
+}
+
+// AuthorizationService interface for authorization checks
+type AuthorizationService interface {
+        ValidateNamespaceAccess(ctx context.Context, userInfo *types.UserInfo, namespace string) error
+        ExtractUserInfo(ctx context.Context, token string) (*types.UserInfo, error)
+        IsAdminUser(userInfo *types.UserInfo) bool
+}
+
+// ClusterRoleValidation holds the result of ClusterRole validation
+type ClusterRoleValidation struct {
+        Exists               bool     `json:"exists"`
+        HasClusterAdmin      bool     `json:"hasClusterAdmin"`
+        HasNamespaceSpanning bool     `json:"hasNamespaceSpanning"`
+        HasClusterScoped     bool     `json:"hasClusterScoped"`
+        Warnings             []string `json:"warnings"`
+        ResourceTypes        []string `json:"resourceTypes"`
+}
+
+// New creates a new Services instance
+func New(cfg *config.Config, logger *logrus.Logger) (*Services, error) <span class="cov0" title="0">{
+        // Initialize Kubernetes service (real implementation)
+        k8sService, err := NewKubernetesServiceReal(cfg, logger)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create kubernetes service: %w", err)
+        }</span>
+
+        // Initialize ArgoCD service (real implementation)
+        <span class="cov0" title="0">argoCDService, err := NewArgoCDServiceReal(cfg, logger)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create argocd service: %w", err)
+        }</span>
+
+        // Initialize Authorization service
+        <span class="cov0" title="0">authService := NewAuthorizationService(cfg, k8sService, logger)
+
+        // Initialize RegistrationControl service
+        registrationControlService := NewRegistrationControlService(cfg, logger)
+
+        // Initialize Registration service (real implementation)
+        registrationService := NewRegistrationServiceReal(cfg, k8sService, argoCDService, logger)
+
+        return &amp;Services{
+                Kubernetes:          k8sService,
+                ArgoCD:              argoCDService,
+                Registration:        registrationService,
+                RegistrationControl: registrationControlService,
+                Authorization:       authService,
+        }, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">package services
+
+import (
+        "context"
+        "crypto/rand"
+        "encoding/hex"
+        "errors"
+        "fmt"
+        "log"
+        "time"
+
+        "github.com/konflux-ci/gitops-registration-service/internal/config"
+        "github.com/konflux-ci/gitops-registration-service/internal/types"
+        "github.com/sirupsen/logrus"
+)
+
+// Stub implementations to satisfy interfaces and allow compilation
+
+// kubernetesServiceStub is a stub implementation of KubernetesService
+type kubernetesServiceStub struct {
+        logger *logrus.Logger
+}
+
+func NewKubernetesService(cfg *config.Config, logger *logrus.Logger) (KubernetesService, error) <span class="cov8" title="1">{
+        return &amp;kubernetesServiceStub{logger: logger}, nil
+}</span>
+
+func (k *kubernetesServiceStub) HealthCheck(ctx context.Context) error <span class="cov8" title="1">{
+        // TODO: Implement actual Kubernetes health check
+        return nil
+}</span>
+
+func (k *kubernetesServiceStub) CreateNamespace(ctx context.Context, name string, labels map[string]string) error <span class="cov8" title="1">{
+        // TODO: Implement namespace creation
+        k.logger.WithField("namespace", name).Info("Creating namespace (stub)")
+        return nil
+}</span>
+
+func (k *kubernetesServiceStub) CreateNamespaceWithMetadata(
+        ctx context.Context, name string, labels, annotations map[string]string,
+) error <span class="cov0" title="0">{
+        log.Printf("STUB: Creating namespace %s with metadata", name)
+        return nil
+}</span>
+
+func (k *kubernetesServiceStub) DeleteNamespace(ctx context.Context, name string) error <span class="cov8" title="1">{
+        // TODO: Implement namespace deletion
+        k.logger.WithField("namespace", name).Info("Deleting namespace (stub)")
+        return nil
+}</span>
+
+func (k *kubernetesServiceStub) UpdateNamespaceLabels(ctx context.Context, name string, labels map[string]string) error <span class="cov0" title="0">{
+        // TODO: Implement namespace label update
+        k.logger.WithFields(logrus.Fields{
+                "namespace": name,
+                "labels":    labels,
+        }).Info("Updating namespace labels (stub)")
+        return nil
+}</span>
+
+func (k *kubernetesServiceStub) UpdateNamespaceMetadata(
+        ctx context.Context, name string, labels, annotations map[string]string,
+) error <span class="cov0" title="0">{
+        log.Printf("STUB: Updating namespace %s metadata", name)
+        return nil
+}</span>
+
+func (k *kubernetesServiceStub) NamespaceExists(ctx context.Context, name string) (bool, error) <span class="cov8" title="1">{
+        // TODO: Implement namespace existence check
+        return false, nil
+}</span>
+
+func (k *kubernetesServiceStub) CountNamespaces(ctx context.Context) (int, error) <span class="cov8" title="1">{
+        // TODO: Implement namespace counting
+        return 5, nil // Stub value
+}</span>
+
+func (k *kubernetesServiceStub) CreateServiceAccount(ctx context.Context, namespace, name string) error <span class="cov0" title="0">{
+        // TODO: Implement service account creation
+        k.logger.WithFields(logrus.Fields{
+                "namespace": namespace,
+                "name":      name,
+        }).Info("Creating service account (stub)")
+        return nil
+}</span>
+
+func (k *kubernetesServiceStub) CreateRoleBinding(ctx context.Context, namespace, name, role, serviceAccount string) error <span class="cov0" title="0">{
+        // TODO: Implement role binding creation
+        k.logger.WithFields(logrus.Fields{
+                "namespace":      namespace,
+                "name":           name,
+                "role":           role,
+                "serviceAccount": serviceAccount,
+        }).Info("Creating role binding (stub)")
+        return nil
+}</span>
+
+// ValidateClusterRole validates a ClusterRole (stub implementation)
+func (k *kubernetesServiceStub) ValidateClusterRole(ctx context.Context, name string) (*ClusterRoleValidation, error) <span class="cov8" title="1">{
+        // Return a valid ClusterRole for testing
+        return &amp;ClusterRoleValidation{
+                Exists:               true,
+                HasClusterAdmin:      false,
+                HasNamespaceSpanning: false,
+                HasClusterScoped:     false,
+                Warnings:             []string{},
+                ResourceTypes:        []string{"secrets", "configmaps", "deployments"},
+        }, nil
+}</span>
+
+// CreateServiceAccountWithGenerateName creates a service account with generated name (stub)
+func (k *kubernetesServiceStub) CreateServiceAccountWithGenerateName(
+        ctx context.Context, namespace, baseName string,
+) (string, error) <span class="cov0" title="0">{
+        generatedName := fmt.Sprintf("%s-%s", baseName, randomString(8))
+        log.Printf("STUB: Creating service account %s in namespace %s", generatedName, namespace)
+        return generatedName, nil
+}</span>
+
+// CreateRoleBindingForServiceAccount creates a RoleBinding (stub)
+func (k *kubernetesServiceStub) CreateRoleBindingForServiceAccount(
+        ctx context.Context, namespace, name, clusterRole, serviceAccountName string,
+) error <span class="cov0" title="0">{
+        log.Printf("STUB: Creating role binding %s for service account %s in namespace %s",
+                name, serviceAccountName, namespace)
+        return nil
+}</span>
+
+// CheckAppProjectConflict checks for conflicts (stub)
+func (k *kubernetesServiceStub) CheckAppProjectConflict(ctx context.Context, repositoryHash string) (bool, error) <span class="cov0" title="0">{
+        // Always return no conflict for testing
+        return false, nil
+}</span>
+
+// argoCDServiceStub is a stub implementation of ArgoCDService
+type argoCDServiceStub struct {
+        logger *logrus.Logger
+}
+
+func NewArgoCDService(cfg *config.Config, logger *logrus.Logger) (ArgoCDService, error) <span class="cov8" title="1">{
+        return &amp;argoCDServiceStub{logger: logger}, nil
+}</span>
+
+func (a *argoCDServiceStub) HealthCheck(ctx context.Context) error <span class="cov8" title="1">{
+        // TODO: Implement actual ArgoCD health check
+        return nil
+}</span>
+
+func (a *argoCDServiceStub) CreateAppProject(ctx context.Context, project *types.AppProject) error <span class="cov8" title="1">{
+        // TODO: Implement AppProject creation
+        a.logger.WithField("project", project.Name).Info("Creating AppProject (stub)")
+        return nil
+}</span>
+
+func (a *argoCDServiceStub) DeleteAppProject(ctx context.Context, name string) error <span class="cov0" title="0">{
+        // TODO: Implement AppProject deletion
+        a.logger.WithField("project", name).Info("Deleting AppProject (stub)")
+        return nil
+}</span>
+
+func (a *argoCDServiceStub) CreateApplication(ctx context.Context, app *types.Application) error <span class="cov8" title="1">{
+        // TODO: Implement Application creation
+        a.logger.WithField("application", app.Name).Info("Creating Application (stub)")
+        return nil
+}</span>
+
+func (a *argoCDServiceStub) DeleteApplication(ctx context.Context, name string) error <span class="cov0" title="0">{
+        // TODO: Implement Application deletion
+        a.logger.WithField("application", name).Info("Deleting Application (stub)")
+        return nil
+}</span>
+
+func (a *argoCDServiceStub) GetApplicationStatus(ctx context.Context, name string) (*types.ApplicationStatus, error) <span class="cov8" title="1">{
+        a.logger.WithField("application", name).Info("Getting application status (stub)")
+        return &amp;types.ApplicationStatus{
+                Phase:   "Synced",
+                Message: "Application is healthy (stub)",
+                Health:  "Healthy",
+                Sync:    "Synced",
+        }, nil
+}</span>
+
+func (a *argoCDServiceStub) convertResourceListToInterface(resources []types.AppProjectResource) []interface{} <span class="cov8" title="1">{
+        result := make([]interface{}, len(resources))
+        for i, resource := range resources </span><span class="cov8" title="1">{
+                result[i] = map[string]interface{}{
+                        "group": resource.Group,
+                        "kind":  resource.Kind,
+                }
+        }</span>
+        <span class="cov8" title="1">return result</span>
+}
+
+// CheckAppProjectConflict checks for repository conflicts (stub)
+func (a *argoCDServiceStub) CheckAppProjectConflict(ctx context.Context, repositoryHash string) (bool, error) <span class="cov0" title="0">{
+        // Always return no conflict for stub testing
+        return false, nil
+}</span>
+
+// authorizationServiceStub is a stub implementation of AuthorizationService
+type authorizationServiceStub struct {
+        cfg    *config.Config
+        k8s    KubernetesService
+        logger *logrus.Logger
+}
+
+func NewAuthorizationService(cfg *config.Config, k8s KubernetesService, logger *logrus.Logger) AuthorizationService <span class="cov8" title="1">{
+        return &amp;authorizationServiceStub{
+                cfg:    cfg,
+                k8s:    k8s,
+                logger: logger,
+        }
+}</span>
+
+func (a *authorizationServiceStub) ValidateNamespaceAccess(
+        ctx context.Context, userInfo *types.UserInfo, namespace string,
+) error <span class="cov8" title="1">{
+        log.Printf("STUB: Validating access for user %s to namespace %s", userInfo.Username, namespace)
+        return nil
+}</span>
+
+func (a *authorizationServiceStub) ExtractUserInfo(ctx context.Context, token string) (*types.UserInfo, error) <span class="cov8" title="1">{
+        // TODO: Implement token validation and user info extraction
+        return &amp;types.UserInfo{
+                Username: "stub-user",
+                Email:    "stub@example.com",
+                Groups:   []string{"stub-group"},
+        }, nil
+}</span>
+
+func (a *authorizationServiceStub) IsAdminUser(userInfo *types.UserInfo) bool <span class="cov8" title="1">{
+        // TODO: Implement admin user check
+        return false
+}</span>
+
+// registrationControlServiceStub is a stub implementation of RegistrationControlService
+type registrationControlServiceStub struct {
+        cfg    *config.Config
+        logger *logrus.Logger
+}
+
+func NewRegistrationControlService(cfg *config.Config, logger *logrus.Logger) RegistrationControlService <span class="cov0" title="0">{
+        return &amp;registrationControlServiceStub{
+                cfg:    cfg,
+                logger: logger,
+        }
+}</span>
+
+func (r *registrationControlServiceStub) GetRegistrationStatus(
+        ctx context.Context,
+) (*types.ServiceRegistrationStatus, error) <span class="cov8" title="1">{
+        log.Printf("STUB: Getting registration status")
+        return &amp;types.ServiceRegistrationStatus{
+                AllowNewNamespaces: r.cfg.Registration.AllowNewNamespaces,
+                Message:            "Registration status based on configuration",
+        }, nil
+}</span>
+
+func (r *registrationControlServiceStub) IsNewNamespaceAllowed(ctx context.Context) error <span class="cov8" title="1">{
+        if !r.cfg.Registration.AllowNewNamespaces </span><span class="cov8" title="1">{
+                return errors.New("new namespace registration is currently disabled")
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+// registrationServiceStub is a stub implementation of RegistrationService
+type registrationServiceStub struct {
+        cfg    *config.Config
+        k8s    KubernetesService
+        argocd ArgoCDService
+        logger *logrus.Logger
+}
+
+func NewRegistrationService(
+        cfg *config.Config, k8s KubernetesService, argocd ArgoCDService, logger *logrus.Logger,
+) RegistrationService <span class="cov8" title="1">{
+        log.Printf("STUB: Creating registration service")
+        return &amp;registrationServiceStub{cfg: cfg, k8s: k8s, argocd: argocd, logger: logger}
+}</span>
+
+func (r *registrationServiceStub) CreateRegistration(
+        ctx context.Context, req *types.RegistrationRequest,
+) (*types.Registration, error) <span class="cov8" title="1">{
+        log.Printf("STUB: Creating registration for namespace %s", req.Namespace)
+        return &amp;types.Registration{
+                ID:        "stub-reg-123",
+                Namespace: req.Namespace,
+                Repository: types.Repository{
+                        URL:    req.Repository.URL,
+                        Branch: req.Repository.Branch,
+                },
+                Status: types.RegistrationStatus{
+                        Phase:   "pending",
+                        Message: "Registration created (stub)",
+                },
+                CreatedAt: time.Now(),
+                UpdatedAt: time.Now(),
+                Labels: map[string]string{
+                        "gitops.io/managed-by": "gitops-registration-service",
+                },
+        }, nil
+}</span>
+
+func (r *registrationServiceStub) GetRegistration(ctx context.Context, id string) (*types.Registration, error) <span class="cov8" title="1">{
+        // TODO: Implement registration retrieval
+        return nil, errors.New("registration not found (stub)")
+}</span>
+
+func (r *registrationServiceStub) ListRegistrations(
+        ctx context.Context, filters map[string]string,
+) ([]*types.Registration, error) <span class="cov8" title="1">{
+        log.Printf("STUB: Listing registrations")
+        return []*types.Registration{}, nil
+}</span>
+
+func (r *registrationServiceStub) DeleteRegistration(ctx context.Context, id string) error <span class="cov8" title="1">{
+        // TODO: Implement registration deletion
+        r.logger.WithField("id", id).Info("Deleting registration (stub)")
+        return nil
+}</span>
+
+func (r *registrationServiceStub) RegisterExistingNamespace(
+        ctx context.Context, req *types.ExistingNamespaceRequest, userInfo *types.UserInfo,
+) (*types.Registration, error) <span class="cov8" title="1">{
+        log.Printf("STUB: Registering existing namespace %s for user %s",
+                req.ExistingNamespace, userInfo.Username)
+        return &amp;types.Registration{
+                ID:        "stub-existing-reg-123",
+                Namespace: req.ExistingNamespace,
+                Repository: types.Repository{
+                        URL:    req.Repository.URL,
+                        Branch: req.Repository.Branch,
+                },
+                Status: types.RegistrationStatus{
+                        Phase:              "active",
+                        Message:            "Existing namespace registered (stub)",
+                        NamespaceCreated:   false, // Existing namespace, not created by us
+                        AppProjectCreated:  true,
+                        ApplicationCreated: true,
+                        ArgoCDApplication:  fmt.Sprintf("%s-app", req.ExistingNamespace),
+                        ArgoCDAppProject:   req.ExistingNamespace,
+                },
+                CreatedAt: time.Now(),
+                UpdatedAt: time.Now(),
+                Labels: map[string]string{
+                        "gitops.io/managed-by": "gitops-registration-service",
+                },
+        }, nil
+}</span>
+
+func (r *registrationServiceStub) ValidateRegistration(ctx context.Context, req *types.RegistrationRequest) error <span class="cov0" title="0">{
+        r.logger.Info("Validating registration (stub)")
+
+        // Basic validation
+        if req.Namespace == "" </span><span class="cov0" title="0">{
+                return fmt.Errorf("namespace is required")
+        }</span>
+        <span class="cov0" title="0">if req.Repository.URL == "" </span><span class="cov0" title="0">{
+                return fmt.Errorf("repository URL is required")
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+func (r *registrationServiceStub) ValidateExistingNamespaceRequest(
+        ctx context.Context, req *types.ExistingNamespaceRequest,
+) error <span class="cov0" title="0">{
+        log.Printf("STUB: Validating existing namespace request for %s", req.ExistingNamespace)
+        return nil
+}</span>
+
+// randomString generates a random string of the specified length
+func randomString(length int) string <span class="cov0" title="0">{
+        bytes := make([]byte, length/2)
+        if _, err := rand.Read(bytes); err != nil </span><span class="cov0" title="0">{
+                return "fallback"
+        }</span>
+        <span class="cov0" title="0">return hex.EncodeToString(bytes)[:length]</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

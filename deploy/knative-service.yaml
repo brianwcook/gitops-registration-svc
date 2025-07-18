@@ -15,10 +15,10 @@ spec:
         autoscaling.knative.dev/maxScale: "10"
         autoscaling.knative.dev/target: "100"
         autoscaling.knative.dev/targetUtilizationPercentage: "70"
-        
+
         # Resource limits
         autoscaling.knative.dev/window: "60s"
-        
+
       labels:
         app: gitops-registration-service
         version: v1.0.0
@@ -89,4 +89,4 @@ spec:
       - name: config
         configMap:
           name: gitops-registration-config
-          optional: true 
+          optional: true

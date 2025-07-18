@@ -1,0 +1,293 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop, impersonation ]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+  actions: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Pre-job to check if we should skip redundant runs
+  pre_job:
+    name: Duplicate Check
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    steps:
+    - id: skip_check
+      uses: fkirc/skip-duplicate-actions@v5
+      with:
+        # Skip if there's already a successful duplicate run
+        skip_after_successful_duplicate: 'true'
+        # Cancel outdated workflow runs on new pushes
+        cancel_others: 'true'
+        # Never skip concurrent runs (allow parallel PR and push workflows)
+        concurrent_skipping: 'never'
+        # Skip for documentation and non-code changes
+        paths_ignore: '["**/README.md", "**/TESTING.md", "**/technical-requirements.md", "**/docs/**", "**/*.md"]'
+        # Never skip these important triggers
+        do_not_skip: '["pull_request", "workflow_dispatch", "schedule"]'
+
+  validation:
+    name: Code Validation
+    runs-on: ubuntu-latest
+    needs: pre_job
+    if: needs.pre_job.outputs.should_skip != 'true' && !github.event.pull_request.draft
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Check Go formatting
+      run: |
+        if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+          echo "❌ The following files are not formatted:"
+          gofmt -s -l .
+          echo ""
+          echo "💡 Run 'gofmt -s -w .' to fix formatting issues"
+          exit 1
+        fi
+        echo "✅ All Go files are properly formatted"
+
+    - name: Check Go mod tidy
+      run: |
+        cp go.mod go.mod.bak
+        cp go.sum go.sum.bak
+        go mod tidy
+        if ! diff -q go.mod go.mod.bak || ! diff -q go.sum go.sum.bak; then
+          echo "❌ go.mod or go.sum is not tidy"
+          echo ""
+          echo "💡 Run 'go mod tidy' and commit the changes"
+          git diff go.mod go.sum
+          exit 1
+        fi
+        echo "✅ go.mod and go.sum are tidy"
+
+    - name: Run linting
+      uses: golangci/golangci-lint-action@v6
+      with:
+        version: v1.54
+        args: --timeout=2m
+
+    - name: Lint Dockerfile
+      uses: hadolint/hadolint-action@v3.1.0
+      with:
+        dockerfile: Dockerfile
+        failure-threshold: warning
+
+    - name: Lint YAML files
+      run: |
+        pip install yamllint
+        find . -name "*.yaml" -o -name "*.yml" | grep -v ".git" | xargs yamllint -d relaxed
+
+    - name: Build application
+      run: |
+        echo "🔨 Building application..."
+        go build -v ./cmd/server
+        echo "✅ Build successful"
+
+    - name: Run unit tests with coverage
+      run: |
+        echo "🧪 Running unit tests with coverage..."
+        go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+        go tool cover -html=coverage.out -o coverage.html
+
+    - name: Check coverage threshold
+      run: |
+        COVERAGE=$(go tool cover -func=coverage.out | grep "total:" | awk '{print $3}' | sed 's/%//')
+        echo "Current coverage: ${COVERAGE}%"
+        echo "Required threshold: 70%"
+        if (( $(echo "$COVERAGE < 70" | bc -l) )); then
+          echo "❌ Coverage ${COVERAGE}% is below required threshold of 70%"
+          echo "Please add tests to increase coverage above 70%"
+          exit 1
+        else
+          echo "✅ Coverage ${COVERAGE}% meets the required threshold of 70%"
+        fi
+
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.out
+        flags: unittests
+        name: codecov-umbrella
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  build-image:
+    name: Build Container Image
+    runs-on: ubuntu-latest
+    needs: [pre_job, validation]
+    if: needs.pre_job.outputs.should_skip != 'true' && (github.event_name == 'push' || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'build-image')))
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      image-tag: ${{ steps.meta.outputs.tags }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix=${{ github.ref_name }}-
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push Docker image
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [pre_job, build-image]
+    if: needs.pre_job.outputs.should_skip != 'true' && (github.event_name == 'push' || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'integration-tests')))
+    strategy:
+      matrix:
+        k8s-version: ['v1.29.2', 'v1.30.0']
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v4
+      with:
+        version: ${{ matrix.k8s-version }}
+
+    - name: Set up KIND
+      uses: helm/kind-action@v1
+      with:
+        version: v0.20.0
+        kubectl_version: ${{ matrix.k8s-version }}
+        install_only: true
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract image reference
+      id: image
+      run: |
+        IMAGE_TAG=$(echo '${{ needs.build-image.outputs.image-tag }}' | head -n1)
+        echo "image-ref=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+        echo "Using image: ${IMAGE_TAG}"
+
+    - name: Run integration tests
+      env:
+        IMAGE: ${{ steps.image.outputs.image-ref }}
+      run: |
+        echo "Running integration tests with image: ${IMAGE}"
+        make test-integration-full IMAGE="${IMAGE}"
+
+    - name: Collect logs on failure
+      if: failure()
+      run: |
+        echo "=== Collecting diagnostic information ==="
+        kubectl --context kind-gitops-registration-test get all -A || true
+        kubectl --context kind-gitops-registration-test describe nodes || true
+        kubectl --context kind-gitops-registration-test logs -n konflux-gitops -l serving.knative.dev/service=gitops-registration --tail=100 || true
+        kubectl --context kind-gitops-registration-test get events -A --sort-by='.lastTimestamp' || true
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: [pre_job, build-image]
+    if: needs.pre_job.outputs.should_skip != 'true' && (github.event_name == 'push' || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'security-scan')))
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract image reference
+      id: image
+      run: |
+        IMAGE_TAG=$(echo '${{ needs.build-image.outputs.image-tag }}' | head -n1)
+        echo "image-ref=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ steps.image.outputs.image-ref }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'

@@ -6,15 +6,19 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/sirupsen/logrus"
-
 	"github.com/konflux-ci/gitops-registration-service/internal/services"
 	"github.com/konflux-ci/gitops-registration-service/internal/types"
+	"github.com/sirupsen/logrus"
 )
 
 // isNamespaceConflictError checks if the error is a namespace conflict error
 func isNamespaceConflictError(err error) bool {
 	return strings.Contains(err.Error(), "already exists")
+}
+
+// isRepositoryConflictError checks if the error is a repository conflict error
+func isRepositoryConflictError(err error) bool {
+	return strings.Contains(err.Error(), "already registered")
 }
 
 // RegistrationHandler handles registration-related HTTP requests
@@ -47,14 +51,14 @@ func (h *RegistrationHandler) CreateRegistration(w http.ResponseWriter, r *http.
 	}
 
 	// Validate request
-	if err := h.services.Registration.ValidateRegistration(r.Context(), &req); err != nil {
-		h.writeErrorResponse(w, "INVALID_REQUEST", err.Error(), http.StatusBadRequest)
+	if validationErr := h.services.Registration.ValidateRegistration(r.Context(), &req); validationErr != nil {
+		h.writeErrorResponse(w, "INVALID_REQUEST", validationErr.Error(), http.StatusBadRequest)
 		return
 	}
 
 	// Check if new namespace registration is allowed
-	if err := h.services.RegistrationControl.IsNewNamespaceAllowed(r.Context()); err != nil {
-		h.writeErrorResponse(w, "REGISTRATION_DISABLED", err.Error(), http.StatusServiceUnavailable)
+	if controlErr := h.services.RegistrationControl.IsNewNamespaceAllowed(r.Context()); controlErr != nil {
+		h.writeErrorResponse(w, "REGISTRATION_DISABLED", controlErr.Error(), http.StatusForbidden)
 		return
 	}
 
@@ -70,13 +74,19 @@ func (h *RegistrationHandler) CreateRegistration(w http.ResponseWriter, r *http.
 			h.writeErrorResponse(w, "NAMESPACE_CONFLICT", err.Error(), http.StatusConflict)
 			return
 		}
+		if isRepositoryConflictError(err) {
+			h.writeErrorResponse(w, "REPOSITORY_CONFLICT", err.Error(), http.StatusConflict)
+			return
+		}
 
 		h.writeErrorResponse(w, "REGISTRATION_FAILED", "Failed to create registration", http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(registration)
+	if err := json.NewEncoder(w).Encode(registration); err != nil {
+		h.logger.WithError(err).Error("Failed to encode registration response")
+	}
 }
 
 // RegisterExistingNamespace handles POST /api/v1/registrations/existing
@@ -100,14 +110,16 @@ func (h *RegistrationHandler) RegisterExistingNamespace(w http.ResponseWriter, r
 		return
 	}
 
-	// Validate namespace access permissions (FR-008)
-	if err := h.services.Authorization.ValidateNamespaceAccess(r.Context(), userInfo, req.ExistingNamespace); err != nil {
+	// Validate user has access to the existing namespace
+	authErr := h.services.Authorization.ValidateNamespaceAccess(r.Context(), userInfo, req.ExistingNamespace)
+	if authErr != nil {
 		h.logger.WithFields(logrus.Fields{
 			"user":      userInfo.Username,
 			"namespace": req.ExistingNamespace,
-			"error":     err,
+			"error":     authErr,
 		}).Warn("Unauthorized namespace access attempt")
-		h.writeErrorResponse(w, "INSUFFICIENT_PERMISSIONS", "Insufficient permissions for target namespace", http.StatusForbidden)
+		h.writeErrorResponse(w, "INSUFFICIENT_PERMISSIONS",
+			"Insufficient permissions for target namespace", http.StatusForbidden)
 		return
 	}
 
@@ -115,12 +127,15 @@ func (h *RegistrationHandler) RegisterExistingNamespace(w http.ResponseWriter, r
 	registration, err := h.services.Registration.RegisterExistingNamespace(r.Context(), &req, userInfo)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to register existing namespace")
-		h.writeErrorResponse(w, "REGISTRATION_FAILED", "Failed to register existing namespace", http.StatusInternalServerError)
+		h.writeErrorResponse(w, "REGISTRATION_FAILED",
+			"Failed to register existing namespace", http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(registration)
+	if err := json.NewEncoder(w).Encode(registration); err != nil {
+		h.logger.WithError(err).Error("Failed to encode registration response")
+	}
 }
 
 // ListRegistrations handles GET /api/v1/registrations
@@ -139,7 +154,9 @@ func (h *RegistrationHandler) ListRegistrations(w http.ResponseWriter, r *http.R
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(registrations)
+	if err := json.NewEncoder(w).Encode(registrations); err != nil {
+		h.logger.WithError(err).Error("Failed to encode registrations response")
+	}
 }
 
 // GetRegistration handles GET /api/v1/registrations/{id}
@@ -157,7 +174,9 @@ func (h *RegistrationHandler) GetRegistration(w http.ResponseWriter, r *http.Req
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(registration)
+	if err := json.NewEncoder(w).Encode(registration); err != nil {
+		h.logger.WithError(err).Error("Failed to encode registration response")
+	}
 }
 
 // DeleteRegistration handles DELETE /api/v1/registrations/{id}
@@ -192,7 +211,9 @@ func (h *RegistrationHandler) GetRegistrationStatus(w http.ResponseWriter, r *ht
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(registration.Status)
+	if err := json.NewEncoder(w).Encode(registration.Status); err != nil {
+		h.logger.WithError(err).Error("Failed to encode registration status response")
+	}
 }
 
 // SyncRegistration handles POST /api/v1/registrations/{id}/sync
@@ -212,7 +233,9 @@ func (h *RegistrationHandler) SyncRegistration(w http.ResponseWriter, r *http.Re
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		h.logger.WithError(err).Error("Failed to encode sync response")
+	}
 }
 
 // Helper methods
@@ -237,9 +260,11 @@ func (h *RegistrationHandler) extractUserInfo(r *http.Request) (*types.UserInfo,
 // writeErrorResponse writes a standardized error response
 func (h *RegistrationHandler) writeErrorResponse(w http.ResponseWriter, errorCode, message string, statusCode int) {
 	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(types.ErrorResponse{
+	if err := json.NewEncoder(w).Encode(types.ErrorResponse{
 		Error:   errorCode,
 		Message: message,
 		Code:    statusCode,
-	})
+	}); err != nil {
+		h.logger.WithError(err).Error("Failed to encode error response")
+	}
 }

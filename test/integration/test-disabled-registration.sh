@@ -97,11 +97,11 @@ test_registration_disabled() {
         -H "Content-Type: application/json" \
         -d "$test_data" 2>/dev/null || echo "000")
     
-    if [ "$response_code" = "503" ]; then
-        echo_success "✓ Registration correctly rejected when disabled (HTTP 503)"
+    if [ "$response_code" = "403" ]; then
+        echo_success "✓ Registration correctly rejected when disabled (HTTP 403 Forbidden)"
         ((TESTS_PASSED++))
     else
-        echo_error "✗ Registration should have been rejected with HTTP 503, got HTTP $response_code"
+        echo_error "✗ Registration should have been rejected with HTTP 403, got HTTP $response_code"
         ((TESTS_FAILED++))
     fi
     

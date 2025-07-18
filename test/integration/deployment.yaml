@@ -18,8 +18,8 @@ spec:
       serviceAccountName: gitops-registration-sa
       containers:
       - name: gitops-registration-service
-        image: localhost/gitops-registration-service:latest
-        imagePullPolicy: Never
+        image: quay.io/bcook/gitops-registration:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 8080
         env:
@@ -86,4 +86,4 @@ spec:
   ports:
   - port: 8080
     targetPort: 8080
-    name: http 
+    name: http

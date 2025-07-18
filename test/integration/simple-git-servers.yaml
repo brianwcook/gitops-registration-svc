@@ -12,31 +12,31 @@ metadata:
 data:
   README.md: |
     # Team Alpha GitOps Configuration
-    
+
     This is a test repository for GitOps registration service integration tests.
-    
+
     ## Content
     - **Type**: basic-app
     - **Manifests**: Located in `manifests/` directory
     - **Purpose**: Integration testing for GitOps registration service
-    
+
     ## Usage
     This repository is used by ArgoCD for continuous deployment testing.
-    
+
   HEAD: |
     ref: refs/heads/main
-    
+
   "info.refs": |
     e69de29bb2d1d6434b8b29ae775ad8c2e48c5391	refs/heads/main
-    
+
   "objects.info.packs": |
-  
+
   # Git empty tree object
   "objects.4b.825dc642cb6eb9a060e54bf8d69288fbee4904": ""
-  
+
   # Git commit object pointing to empty tree (this is not the right hash, but a placeholder)
   "objects.e6.9de29bb2d1d6434b8b29ae775ad8c2e48c5391": ""
-  
+
   "manifests.namespace.yaml": |
     apiVersion: v1
     kind: Namespace
@@ -49,7 +49,7 @@ data:
       annotations:
         gitops.io/repository: http://git-servers.git-servers.svc.cluster.local/team-alpha-config.git
         gitops.io/branch: main
-  
+
   "manifests.deployment.yaml": |
     apiVersion: apps/v1
     kind: Deployment
@@ -102,7 +102,7 @@ data:
         targetPort: 80
         name: http
       type: ClusterIP
-  
+
   "manifests.configmap.yaml": |
     apiVersion: v1
     kind: ConfigMap
@@ -123,12 +123,12 @@ data:
         server {
             listen 80;
             server_name localhost;
-            
+
             location / {
                 root /usr/share/nginx/html;
                 index index.html;
             }
-            
+
             location /health {
                 return 200 "Team Alpha - Healthy\n";
                 add_header Content-Type text/plain;
@@ -144,28 +144,28 @@ metadata:
 data:
   README.md: |
     # Team Beta GitOps Configuration
-    
+
     This is a test repository for GitOps registration service integration tests.
-    
+
     ## Content
     - **Type**: config-app
     - **Manifests**: Located in `manifests.` directory
     - **Purpose**: Integration testing for GitOps registration service
-    
+
     ## Usage
     This repository is used by ArgoCD for continuous deployment testing.
-    
+
   HEAD: |
     ref: refs/heads/main
-    
+
   "info.refs": |
     4b825dc642cb6eb9a060e54bf8d69288fbee4904	refs/heads/main
-    
+
   "objects.info.packs": |
-  
+
   # Git empty tree object (SHA1 of empty tree)
   "objects.4b.825dc642cb6eb9a060e54bf8d69288fbee4904": ""
-  
+
   "manifests.namespace.yaml": |
     apiVersion: v1
     kind: Namespace
@@ -179,7 +179,7 @@ data:
       annotations:
         gitops.io/repository: http://git-servers.git-servers.svc.cluster.local/team-beta-config.git
         gitops.io/branch: main
-  
+
   "manifests.deployment.yaml": |
     apiVersion: apps/v1
     kind: Deployment
@@ -246,7 +246,7 @@ data:
         targetPort: 80
         name: http
       type: ClusterIP
-  
+
   "manifests.secret.yaml": |
     apiVersion: v1
     kind: Secret
@@ -355,4 +355,4 @@ spec:
     name: http
     nodePort: 30300
   selector:
-    app: git-servers 
+    app: git-servers

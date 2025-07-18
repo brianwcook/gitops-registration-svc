@@ -284,7 +284,7 @@ test_registration_control() {
     }'
     
     # With current stub implementation, this will succeed, but in production
-    # with ALLOW_NEW_NAMESPACES=false, it would return 503
+    # with ALLOW_NEW_NAMESPACES=false, it would return 403
     # We test the auth path for now
     if [ -n "$valid_token" ]; then
         if run_curl "POST" "/api/v1/registrations" "$disabled_reg_data" "Bearer $valid_token" "201"; then

@@ -24,15 +24,9 @@ data:
       - rolebindings
       # Example service-level resource restrictions (cluster admin controlled)
       # Only ONE of allowList or denyList should be used, not both
-      resourceAllowList:
-      - group: ""
-        kind: "ConfigMap"
-      - group: ""
-        kind: "Service"
-      - group: "apps"
-        kind: "Deployment"
-      - group: "batch"
-        kind: "Job"
+      # Default: no restrictions (tests will configure specific restrictions)
+      # resourceAllowList: []
+      # resourceDenyList: []
       requireAppProjectPerTenant: true
       enableServiceAccountImpersonation: true
     capacity:
@@ -57,4 +51,4 @@ data:
         requests.memory: "2Gi"
         limits.cpu: "4"
         limits.memory: "8Gi"
-        persistentvolumeclaims: "10" 
+        persistentvolumeclaims: "10"

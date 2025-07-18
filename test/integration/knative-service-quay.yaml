@@ -72,4 +72,4 @@ spec:
           name: gitops-registration-config
   traffic:
   - percent: 100
-    latestRevision: true 
+    latestRevision: true

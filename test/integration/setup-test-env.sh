@@ -73,20 +73,55 @@ echo_info "Waiting for cluster to be ready..."
 kubectl wait --for=condition=Ready nodes --all --timeout=300s
 echo_success "Cluster nodes are ready"
 
-# Install Knative Serving
+# Deploy all infrastructure components in parallel for faster setup
+echo_info "Deploying infrastructure components in parallel..."
+echo_info "  - Knative Serving $KNATIVE_VERSION"
+echo_info "  - ArgoCD $ARGOCD_VERSION" 
+echo_info "  - Smart HTTP Git Servers"
+
+# 1. Deploy Knative Serving (CRDs + Core)
 echo_info "Installing Knative Serving $KNATIVE_VERSION..."
-
-# Install CRDs
 kubectl apply -f https://github.com/knative/serving/releases/download/knative-${KNATIVE_VERSION}/serving-crds.yaml
-
-# Install core components
 kubectl apply -f https://github.com/knative/serving/releases/download/knative-${KNATIVE_VERSION}/serving-core.yaml
+
+# 2. Deploy ArgoCD
+echo_info "Installing ArgoCD $ARGOCD_VERSION..."
+kubectl create namespace argocd || echo_warning "ArgoCD namespace already exists"
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+# 3. Deploy Smart Git Servers  
+echo_info "Installing smart HTTP git servers..."
+kubectl apply -f smart-git-servers.yaml
+
+# Now wait for all components to be ready in parallel
+echo_info "Waiting for all infrastructure components to be ready..."
 
 # Wait for Knative to be ready
 echo_info "Waiting for Knative to be ready..."
 kubectl wait --for=condition=Ready pod --all -n knative-serving --timeout=300s
 
-# Additional wait for webhook endpoints to be ready
+# Wait for ArgoCD to be ready  
+echo_info "Waiting for ArgoCD to be ready..."
+kubectl wait --for=condition=Ready pod --all -n argocd --timeout=600s
+
+# Configure ArgoCD with namespace enforcement (CRITICAL for security!)
+echo_info "Configuring ArgoCD with namespace enforcement..."
+kubectl patch configmap argocd-cm -n argocd --type merge -p '{"data":{"application.namespaceEnforcement":"true"}}'
+
+# Restart ArgoCD server to pick up new configuration
+echo_info "Restarting ArgoCD server to apply namespace enforcement..."
+kubectl rollout restart deployment argocd-server -n argocd
+kubectl rollout restart statefulset argocd-application-controller -n argocd
+
+# Wait for ArgoCD to be ready again after restart
+echo_info "Waiting for ArgoCD to be ready after configuration..."
+kubectl wait --for=condition=Ready pod --all -n argocd --timeout=600s
+
+# Wait for git servers to be ready
+echo_info "Waiting for git servers to be ready..."
+kubectl wait --for=condition=Ready pod -l app=git-servers -n git-servers --timeout=300s
+
+# Additional Knative webhook setup (after basic pods are ready)
 echo_info "Waiting for Knative webhooks to be ready..."
 sleep 30
 for i in {1..12}; do
@@ -101,7 +136,7 @@ for i in {1..12}; do
     sleep 10
 done
 
-# Install Knative networking layer (Kourier)
+# Install Knative networking layer (Kourier) - after core is ready
 echo_info "Installing Knative networking layer (Kourier)..."
 kubectl apply -f https://github.com/knative/net-kourier/releases/download/knative-${KNATIVE_VERSION}/kourier.yaml
 
@@ -114,37 +149,12 @@ kubectl patch configmap/config-network \
 # Wait for Kourier to be ready
 kubectl wait --for=condition=Ready pod --all -n kourier-system --timeout=300s
 
-echo_success "Knative Serving installed successfully"
-
-# Install ArgoCD
-echo_info "Installing ArgoCD $ARGOCD_VERSION..."
-
-# Create ArgoCD namespace
-kubectl create namespace argocd || echo_warning "ArgoCD namespace already exists"
-
-# Install ArgoCD
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-
-# Wait for ArgoCD to be ready
-echo_info "Waiting for ArgoCD to be ready..."
-kubectl wait --for=condition=Ready pod --all -n argocd --timeout=600s
-
-# Patch ArgoCD server service to use NodePort for testing
+# Configure ArgoCD for testing (after ArgoCD is ready)
 kubectl patch svc argocd-server -n argocd -p '{"spec":{"type":"NodePort","ports":[{"name":"https","port":443,"protocol":"TCP","targetPort":8080,"nodePort":30080}]}}'
 
-echo_success "ArgoCD installed successfully"
-
-# Install Simple HTTP Git Servers
-echo_info "Installing simple HTTP git servers..."
-
-# Deploy simple git servers
-kubectl apply -f simple-servers.yaml
-
-# Wait for git servers to be ready
-echo_info "Waiting for git servers to be ready..."
-kubectl wait --for=condition=Ready pod -l app=git-servers -n git-servers --timeout=300s
-
-echo_success "Simple HTTP git servers installed successfully"
+echo_success "Knative Serving installed successfully"
+echo_success "ArgoCD installed successfully" 
+echo_success "Smart HTTP git servers installed successfully"
 
 # Apply konflux-admin-user-actions ClusterRole for testing
 echo_info "Creating konflux-admin-user-actions ClusterRole for testing..."
