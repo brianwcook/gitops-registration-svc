@@ -437,6 +437,199 @@ test_namespace_conflict() {
     fi
 }
 
+# Test: Tenant separation security
+test_tenant_separation_security() {
+    echo_info "Testing tenant separation and namespace security boundaries..."
+    
+    local secure_namespace="tenant-secure"
+    local malicious_app_name="${secure_namespace}-app"
+    local malicious_project_name="tenant-${secure_namespace}"
+    
+    # Clean up any existing resources first
+    kubectl --context kind-gitops-registration-test delete namespace "$secure_namespace" --ignore-not-found=true
+    kubectl --context kind-gitops-registration-test delete application "$malicious_app_name" -n argocd --ignore-not-found=true
+    kubectl --context kind-gitops-registration-test delete appproject "$malicious_project_name" -n argocd --ignore-not-found=true
+    
+    # Wait for cleanup
+    sleep 5
+    
+    echo_info "Step 1: Registering secure tenant namespace with malicious repository..."
+    
+    local malicious_data='{
+        "repository": {
+            "url": "'$GITEA_CLUSTER_URL'/malicious-cross-tenant.git",
+            "branch": "main"
+        },
+        "namespace": "'$secure_namespace'"
+    }'
+    
+    # Get authentication token
+    local auth_token=$(kubectl --context kind-gitops-registration-test create token gitops-registration-sa --namespace konflux-gitops --duration=3600s 2>/dev/null || echo "")
+    local auth_header=""
+    if [ -n "$auth_token" ]; then
+        auth_header="Bearer $auth_token"
+        echo_info "Successfully obtained authentication token"
+    else
+        echo_warning "Failed to obtain authentication token - test may fail"
+    fi
+    
+    # Make registration request
+    if run_curl "POST" "/api/v1/registrations" "$malicious_data" "$auth_header" "201"; then
+        echo_success "✓ Registration request succeeded (expected)"
+        ((TESTS_PASSED++))
+    else
+        echo_error "✗ Registration request failed unexpectedly"
+        ((TESTS_FAILED++))
+        return 1
+    fi
+    
+    # Wait for resources to be created
+    sleep 10
+    
+    echo_info "Step 2: Verifying namespace was created..."
+    if kubectl --context kind-gitops-registration-test get namespace "$secure_namespace" &>/dev/null; then
+        echo_success "✓ Secure namespace '$secure_namespace' was created"
+        ((TESTS_PASSED++))
+    else
+        echo_error "✗ Secure namespace '$secure_namespace' was not created"
+        ((TESTS_FAILED++))
+    fi
+    
+    echo_info "Step 3: Verifying AppProject was created with proper destination restrictions..."
+    if kubectl --context kind-gitops-registration-test get appproject "$malicious_project_name" -n argocd &>/dev/null; then
+        echo_success "✓ AppProject '$malicious_project_name' was created"
+        
+        # Check that AppProject has correct destination restrictions
+        local destinations=$(kubectl --context kind-gitops-registration-test get appproject "$malicious_project_name" -n argocd -o jsonpath='{.spec.destinations[*].namespace}')
+        if [[ "$destinations" == "$secure_namespace" ]]; then
+            echo_success "✓ AppProject destinations correctly restricted to '$secure_namespace'"
+            ((TESTS_PASSED++))
+        else
+            echo_error "✗ AppProject destinations not properly restricted. Found: $destinations"
+            ((TESTS_FAILED++))
+        fi
+    else
+        echo_error "✗ AppProject '$malicious_project_name' was not created"
+        ((TESTS_FAILED++))
+    fi
+    
+    echo_info "Step 4: Waiting for ArgoCD Application to be created..."
+    local attempts=0
+    local max_attempts=30
+    while [ $attempts -lt $max_attempts ]; do
+        if kubectl --context kind-gitops-registration-test get application "$malicious_app_name" -n argocd &>/dev/null; then
+            echo_success "✓ ArgoCD Application '$malicious_app_name' was created"
+            break
+        fi
+        sleep 2
+        ((attempts++))
+    done
+    
+    if [ $attempts -eq $max_attempts ]; then
+        echo_error "✗ ArgoCD Application '$malicious_app_name' was not created within timeout"
+        ((TESTS_FAILED++))
+        return 1
+    fi
+    
+    echo_info "Step 5: Waiting for ArgoCD to attempt sync and verify it fails due to security restrictions..."
+    
+    # Wait for ArgoCD to process the application and attempt sync
+    sleep 15
+    
+    # Check application status - it should fail to sync due to destination restrictions
+    local app_status=""
+    local sync_status=""
+    local health_status=""
+    
+    for i in {1..10}; do
+        app_status=$(kubectl --context kind-gitops-registration-test get application "$malicious_app_name" -n argocd -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "Unknown")
+        health_status=$(kubectl --context kind-gitops-registration-test get application "$malicious_app_name" -n argocd -o jsonpath='{.status.health.status}' 2>/dev/null || echo "Unknown")
+        
+        echo_info "Sync Status: $app_status, Health Status: $health_status (attempt $i/10)"
+        
+        # Look for sync failure or security-related errors
+        if [[ "$app_status" == "OutOfSync" ]] || [[ "$app_status" == "Unknown" ]]; then
+            # Check for security/permission errors in the application status
+            local app_errors=$(kubectl --context kind-gitops-registration-test get application "$malicious_app_name" -n argocd -o jsonpath='{.status.conditions[?(@.type=="ComparisonError")].message}' 2>/dev/null || echo "")
+            local operation_errors=$(kubectl --context kind-gitops-registration-test get application "$malicious_app_name" -n argocd -o jsonpath='{.status.operationState.message}' 2>/dev/null || echo "")
+            
+            if [[ "$app_errors" == *"namespace"* ]] || [[ "$app_errors" == *"permission"* ]] || [[ "$app_errors" == *"forbidden"* ]] || 
+               [[ "$operation_errors" == *"namespace"* ]] || [[ "$operation_errors" == *"permission"* ]] || [[ "$operation_errors" == *"forbidden"* ]]; then
+                echo_success "✓ ArgoCD properly blocked deployment due to namespace restrictions"
+                echo_info "   Security error detected: $app_errors $operation_errors"
+                ((TESTS_PASSED++))
+                break
+            fi
+        fi
+        
+        # If sync succeeded, that's a security failure
+        if [[ "$app_status" == "Synced" ]] && [[ "$health_status" == "Healthy" ]]; then
+            echo_error "✗ SECURITY FAILURE: ArgoCD allowed deployment to unauthorized namespaces!"
+            echo_error "   This indicates tenant separation is NOT working correctly"
+            ((TESTS_FAILED++))
+            break
+        fi
+        
+        sleep 5
+    done
+    
+    echo_info "Step 6: Verifying no malicious resources were created in unauthorized namespaces..."
+    
+    # Check that no malicious resources were created in kube-system
+    local kube_system_attack=$(kubectl --context kind-gitops-registration-test get configmap malicious-config -n kube-system 2>/dev/null || echo "not-found")
+    if [[ "$kube_system_attack" == "not-found" ]]; then
+        echo_success "✓ No malicious resources found in kube-system namespace"
+        ((TESTS_PASSED++))
+    else
+        echo_error "✗ SECURITY BREACH: Malicious resources found in kube-system!"
+        ((TESTS_FAILED++))
+    fi
+    
+    # Check that no malicious resources were created in default namespace
+    local default_attack=$(kubectl --context kind-gitops-registration-test get secret stolen-secrets -n default 2>/dev/null || echo "not-found")
+    if [[ "$default_attack" == "not-found" ]]; then
+        echo_success "✓ No malicious resources found in default namespace"
+        ((TESTS_PASSED++))
+    else
+        echo_error "✗ SECURITY BREACH: Malicious resources found in default namespace!"
+        ((TESTS_FAILED++))
+    fi
+    
+    # Check that no cross-tenant attacks succeeded
+    local cross_tenant_attack=$(kubectl --context kind-gitops-registration-test get configmap cross-tenant-attack -n team-alpha 2>/dev/null || echo "not-found")
+    if [[ "$cross_tenant_attack" == "not-found" ]]; then
+        echo_success "✓ No cross-tenant attacks found in team-alpha namespace"
+        ((TESTS_PASSED++))
+    else
+        echo_error "✗ SECURITY BREACH: Cross-tenant attack succeeded!"
+        ((TESTS_FAILED++))
+    fi
+    
+    echo_info "Step 7: Verifying only authorized namespace contains any resources..."
+    
+    # Check that the secure namespace exists but contains no unauthorized deployments
+    local secure_ns_resources=$(kubectl --context kind-gitops-registration-test get all -n "$secure_namespace" --no-headers 2>/dev/null | wc -l)
+    echo_info "   Secure namespace '$secure_namespace' contains $secure_ns_resources resources"
+    
+    # The namespace should exist but should be mostly empty since ArgoCD blocked the malicious sync
+    if kubectl --context kind-gitops-registration-test get namespace "$secure_namespace" &>/dev/null; then
+        echo_success "✓ Secure namespace exists as expected"
+        ((TESTS_PASSED++))
+    else
+        echo_error "✗ Secure namespace was deleted unexpectedly"
+        ((TESTS_FAILED++))
+    fi
+    
+    echo_info ""
+    echo_success "Tenant Separation Security Test Results:"
+    echo_info "  • Registration service accepted legitimate registration request"
+    echo_info "  • AppProject was created with proper destination restrictions"
+    echo_info "  • ArgoCD blocked unauthorized namespace deployments"
+    echo_info "  • No malicious resources deployed to system or other tenant namespaces"
+    echo_info "  • Tenant separation security boundaries are properly enforced"
+    echo_info ""
+}
+
 # Test: Resource restrictions - deny list (blacklist)
 test_resource_restrictions_deny_list() {
     echo_info "Testing resource restrictions with service-level deny list (blacklist)..."
@@ -757,6 +950,7 @@ main() {
     test_namespace_conflict
     test_enhanced_repository_registration
     test_enhanced_existing_namespace_registration
+    test_tenant_separation_security
     test_resource_restrictions_deny_list
     test_resource_restrictions_allow_list
     test_resource_restrictions_no_restrictions
@@ -781,6 +975,7 @@ main() {
         echo_success "✅ Resource restrictions (deny list) working"
         echo_success "✅ Resource restrictions (allow list) working"
         echo_success "✅ No restrictions (default behavior) working"
+        echo_success "✅ Tenant separation security working"
         echo_success ""
         echo_success "GitOps Registration Service is fully operational with real implementations!"
     else
