@@ -1,10 +1,11 @@
-Restricting the  kinds of resources that can be synced
+Restricting the kinds of resources that can be synced
 
-I want to be able to provide either
+As an admin of the gitops registration service, 
+I want to be able to provide either:
 * resources allowList or
 * resources denyList
 
-to the gitops registration service. Based on those parameters, when a new AppProject is created, the gitops registration service will configure new appProjects using the built-in whitelist / blacklist feature.
+as part of the gitops registration service config. Based on those parameters, when a new AppProject is created, the gitops registration service will configure new appProjects using the built-in whitelist / blacklist feature.
 
 GitOps registration Serice should only accept either an allowList or a denyList, but not both.
 

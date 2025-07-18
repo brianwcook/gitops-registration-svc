@@ -79,6 +79,46 @@ kubectl --context kind-$CLUSTER_NAME create namespace $NAMESPACE --dry-run=clien
 echo_info "Applying RBAC configuration..."
 kubectl --context kind-$CLUSTER_NAME apply -f deploy/rbac.yaml
 
+# Create the gitops-role ClusterRole that the service expects to bind to
+echo_info "Creating gitops-role ClusterRole..."
+kubectl --context kind-$CLUSTER_NAME apply -f - <<EOF
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: gitops-role
+  labels:
+    app: gitops-registration-service
+rules:
+# Limited permissions for GitOps tenants
+- apiGroups: [""]
+  resources: ["configmaps", "secrets", "services"]
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+
+# Deployments and ReplicaSets
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+
+# Jobs and CronJobs
+- apiGroups: ["batch"]
+  resources: ["jobs", "cronjobs"]
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+
+# Role and RoleBinding management within namespace
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["roles", "rolebindings"]
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+
+# Network policies for tenant isolation
+- apiGroups: ["networking.k8s.io"]
+  resources: ["networkpolicies"]
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+EOF
+
+# Grant permission to bind the gitops-role
+echo_info "Granting permission to bind gitops-role..."
+kubectl --context kind-$CLUSTER_NAME patch clusterrole gitops-registration-controller --type='json' -p='[{"op": "add", "path": "/rules/-", "value": {"apiGroups": ["rbac.authorization.k8s.io"], "resources": ["clusterroles"], "verbs": ["bind"], "resourceNames": ["gitops-role"]}}]'
+
 # Apply ConfigMap
 echo_info "Applying service configuration..."
 kubectl --context kind-$CLUSTER_NAME apply -f deploy/configmap.yaml

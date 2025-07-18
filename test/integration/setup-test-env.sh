@@ -134,17 +134,17 @@ kubectl patch svc argocd-server -n argocd -p '{"spec":{"type":"NodePort","ports"
 
 echo_success "ArgoCD installed successfully"
 
-# Install Simple HTTP Git Servers
-echo_info "Installing simple HTTP git servers..."
+# Install Smart HTTP Git Servers (Apache + git-http-backend)
+echo_info "Installing smart HTTP git servers..."
 
-# Deploy simple git servers
-kubectl apply -f simple-servers.yaml
+# Deploy smart git servers (recommended configuration)
+kubectl apply -f smart-git-servers.yaml
 
 # Wait for git servers to be ready
 echo_info "Waiting for git servers to be ready..."
 kubectl wait --for=condition=Ready pod -l app=git-servers -n git-servers --timeout=300s
 
-echo_success "Simple HTTP git servers installed successfully"
+echo_success "Smart HTTP git servers installed successfully"
 
 # Apply konflux-admin-user-actions ClusterRole for testing
 echo_info "Creating konflux-admin-user-actions ClusterRole for testing..."

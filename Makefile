@@ -56,9 +56,9 @@ deploy-service: ## Deploy the service to KIND (set IMAGE to override default)
 	cd test/integration && ./deploy-service.sh $(IMAGE)
 
 setup-test-data: ## Set up git repositories and test data
-	@echo "Setting up test repositories and data..."
-	cd test/integration && ./setup-git-repos.sh
-	cd test/integration && ./populate-git-repos.sh
+	@echo "Git repositories already configured via smart-git-servers..."
+	@echo "Verifying git server accessibility..."
+	kubectl --context kind-gitops-registration-test wait --for=condition=Ready pod -l app=git-servers -n git-servers --timeout=60s
 
 run-integration-tests: ## Run the enhanced integration tests
 	@echo "Running enhanced integration tests..."

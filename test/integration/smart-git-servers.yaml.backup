@@ -40,8 +40,22 @@ data:
     - **Purpose**: Integration testing for GitOps registration service
     EOF
     
-    # Add manifests for positive test case (no namespace - managed by registration service)
+    # Add manifests
     mkdir -p manifests
+    cat > manifests/namespace.yaml << 'EOF'
+    apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: team-alpha
+      labels:
+        team: alpha
+        managed-by: gitops-registration-service
+        project: team-alpha-config
+      annotations:
+        gitops.io/repository: http://git-servers.git-servers.svc.cluster.local/git/team-alpha-config.git
+        gitops.io/branch: main
+    EOF
+    
     cat > manifests/deployment.yaml << 'EOF'
     apiVersion: apps/v1
     kind: Deployment
@@ -215,6 +229,162 @@ data:
     
     # Update server info for HTTP access
     cd /var/www/git/team-beta-config.git
+    git update-server-info
+    
+    # Setup malicious-cross-tenant repository (for tenant separation testing)
+    mkdir -p /var/www/git/malicious-cross-tenant.git
+    cd /var/www/git/malicious-cross-tenant.git
+    git init --bare
+    
+    # Create a temporary working directory to add files
+    mkdir -p /tmp/malicious-work
+    cd /tmp/malicious-work
+    git init
+    git config user.name "Git Server"
+    git config user.email "server@git.local"
+    
+    # Add README
+    cat > README.md << 'EOF'
+# Malicious Cross-Tenant Repository
+
+This repository contains manifests that attempt to deploy to unauthorized namespaces.
+It is used to test tenant separation and security boundaries in the GitOps registration service.
+
+⚠️ **WARNING**: This repository is for security testing only!
+
+## Purpose
+- Test that ArgoCD AppProjects properly enforce namespace restrictions
+- Verify tenant separation is working correctly  
+- Ensure applications cannot deploy to unauthorized namespaces
+
+## Malicious Manifests
+- Attempts to deploy to kube-system namespace
+- Attempts to deploy to default namespace
+- Attempts to deploy to other tenant namespaces
+EOF
+    
+    # Add malicious manifests that try to deploy to unauthorized namespaces
+    mkdir -p manifests
+    
+    # Try to deploy to kube-system (critical system namespace)
+    cat > manifests/attack-kube-system.yaml << 'EOF'
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: malicious-config
+  namespace: kube-system  # 🚨 UNAUTHORIZED NAMESPACE
+  labels:
+    attack: "kube-system"
+    purpose: "test-tenant-separation"
+data:
+  message: "This should be BLOCKED by AppProject destinations!"
+  attacker: "malicious-cross-tenant"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: malicious-app
+  namespace: kube-system  # 🚨 UNAUTHORIZED NAMESPACE
+  labels:
+    attack: "kube-system"
+    purpose: "test-tenant-separation"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: malicious-app
+  template:
+    metadata:
+      labels:
+        app: malicious-app
+    spec:
+      containers:
+      - name: malicious
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+EOF
+
+    # Try to deploy to default namespace
+    cat > manifests/attack-default.yaml << 'EOF'
+apiVersion: v1
+kind: Secret
+metadata:
+  name: stolen-secrets
+  namespace: default  # 🚨 UNAUTHORIZED NAMESPACE
+  labels:
+    attack: "default"
+    purpose: "test-tenant-separation"
+type: Opaque
+data:
+  password: dGhpc19zaG91bGRfYmVfYmxvY2tlZA==  # "this_should_be_blocked"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: malicious-service
+  namespace: default  # 🚨 UNAUTHORIZED NAMESPACE
+  labels:
+    attack: "default"
+    purpose: "test-tenant-separation"
+spec:
+  selector:
+    app: does-not-exist
+  ports:
+  - port: 80
+    targetPort: 80
+EOF
+
+    # Try to deploy to another tenant's namespace
+    cat > manifests/attack-other-tenant.yaml << 'EOF'
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cross-tenant-attack
+  namespace: team-alpha  # 🚨 UNAUTHORIZED NAMESPACE (different tenant)
+  labels:
+    attack: "cross-tenant"
+    purpose: "test-tenant-separation"
+data:
+  message: "Attempting to access team-alpha namespace!"
+  attacker: "malicious-cross-tenant"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cross-tenant-spy
+  namespace: team-beta  # 🚨 UNAUTHORIZED NAMESPACE (different tenant)
+  labels:
+    attack: "cross-tenant"
+    purpose: "test-tenant-separation"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cross-tenant-spy
+  template:
+    metadata:
+      labels:
+        app: cross-tenant-spy
+    spec:
+      containers:
+      - name: spy
+        image: busybox:latest
+        command: ["sleep", "3600"]
+        env:
+        - name: TARGET_NAMESPACE
+          value: "team-beta"
+EOF
+    
+    # Commit and push to bare repo
+    git add .
+    git commit -m "Add malicious manifests for tenant separation testing"
+    git branch -M main
+    git remote add origin /var/www/git/malicious-cross-tenant.git
+    git push --force origin main
+    
+    # Update server info for HTTP access
+    cd /var/www/git/malicious-cross-tenant.git
     git update-server-info
     
     # Set proper permissions (Apache container will handle ownership)
