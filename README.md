@@ -19,6 +19,8 @@ This service implements the GitOps Registration Service as outlined in [ADR 47: 
 - [x] Repository registration and lifecycle management
 - [x] Namespace provisioning with secure isolation
 - [x] ArgoCD AppProject and Application configuration
+- [x] **ArgoCD namespace enforcement** - prevents cross-tenant attacks ✅
+- [x] **Tenant isolation security** - prevents namespace creation privilege escalation ✅
 - [x] Resource sync restrictions with allow/deny lists
 - [x] RESTful API with OpenAPI 3.0 specification
 - [x] Health checks and metrics endpoints
@@ -383,19 +385,45 @@ registration:
 
 ## Deployment
 
+### ⚠️ Critical Security Requirement
+
+**BEFORE deploying in production**, you MUST configure ArgoCD with namespace enforcement enabled:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: argocd
+data:
+  # CRITICAL: Enable namespace enforcement to prevent cross-tenant attacks
+  application.namespaceEnforcement: "true"
+```
+
+**Without this setting, ArgoCD will ignore AppProject destination restrictions and allow cross-namespace deployments!**
+
+Apply this configuration and restart ArgoCD:
+```bash
+kubectl apply -f argocd-namespace-enforcement.yaml
+kubectl rollout restart deployment argocd-server -n argocd
+kubectl rollout restart deployment argocd-application-controller -n argocd
+```
+
 ### Kubernetes Deployment
 
-1. **Apply RBAC configuration**:
+1. **Configure ArgoCD namespace enforcement** (see above - REQUIRED for security)
+
+2. **Apply RBAC configuration**:
    ```bash
    kubectl apply -f deploy/rbac.yaml
    ```
 
-2. **Deploy Knative service**:
+3. **Deploy Knative service**:
    ```bash
    kubectl apply -f deploy/knative-service.yaml
    ```
 
-3. **Verify deployment**:
+4. **Verify deployment**:
    ```bash
    kubectl get ksvc -n konflux-gitops
    ```

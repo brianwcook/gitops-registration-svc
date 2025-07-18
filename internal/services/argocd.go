@@ -103,12 +103,10 @@ func (a *argoCDService) CreateAppProject(ctx context.Context, project *types.App
 			spec["namespaceResourceBlacklist"] = a.convertResourceListToInterface(project.NamespaceResourceBlacklist)
 		}
 	} else {
-		// No restrictions provided - use default secure whitelist
+		// No restrictions provided - use default secure whitelist (DO NOT include Namespace!)
+		// Note: We intentionally exclude Namespace from cluster whitelist for security
 		spec["clusterResourceWhitelist"] = []interface{}{
-			map[string]interface{}{
-				"group": "",
-				"kind":  "Namespace",
-			},
+			// Deliberately empty - no cluster-scoped resources allowed by default
 		}
 		spec["namespaceResourceWhitelist"] = []interface{}{
 			map[string]interface{}{"group": "", "kind": "ConfigMap"},
