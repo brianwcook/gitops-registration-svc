@@ -38,7 +38,7 @@ echo_info "Using image: $IMAGE_NAME"
 cd "$(dirname "$0")/../.."
 
 # Check if this is a local build or remote image
-if [[ "$IMAGE_NAME" == quay.io/* ]] || [[ "$IMAGE_NAME" == docker.io/* ]] || [[ "$IMAGE_NAME" == gcr.io/* ]]; then
+if [[ "$IMAGE_NAME" == quay.io/* ]] || [[ "$IMAGE_NAME" == docker.io/* ]] || [[ "$IMAGE_NAME" == gcr.io/* ]] || [[ "$IMAGE_NAME" == ghcr.io/* ]]; then
     echo_info "Using remote image: $IMAGE_NAME"
     echo_info "Skipping local build - using published image"
     IMAGE_PULL_POLICY="Always"
@@ -56,7 +56,7 @@ else
         # Load image into KIND cluster
         echo_info "Loading image into KIND cluster..."
         # Podman doesn't work well with kind load docker-image, so use save/load
-        podman save localhost/$IMAGE_NAME -o /tmp/gitops-registration.tar
+        podman save $IMAGE_NAME -o /tmp/gitops-registration.tar
         kind load image-archive /tmp/gitops-registration.tar --name $CLUSTER_NAME
         rm -f /tmp/gitops-registration.tar
     elif command -v docker &> /dev/null; then
@@ -78,6 +78,46 @@ kubectl --context kind-$CLUSTER_NAME create namespace $NAMESPACE --dry-run=clien
 # Apply RBAC
 echo_info "Applying RBAC configuration..."
 kubectl --context kind-$CLUSTER_NAME apply -f deploy/rbac.yaml
+
+# Create the gitops-role ClusterRole that the service expects to bind to
+echo_info "Creating gitops-role ClusterRole..."
+kubectl --context kind-$CLUSTER_NAME apply -f - <<EOF
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: gitops-role
+  labels:
+    app: gitops-registration-service
+rules:
+# Limited permissions for GitOps tenants
+- apiGroups: [""]
+  resources: ["configmaps", "secrets", "services"]
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+
+# Deployments and ReplicaSets
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+
+# Jobs and CronJobs
+- apiGroups: ["batch"]
+  resources: ["jobs", "cronjobs"]
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+
+# Role and RoleBinding management within namespace
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["roles", "rolebindings"]
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+
+# Network policies for tenant isolation
+- apiGroups: ["networking.k8s.io"]
+  resources: ["networkpolicies"]
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+EOF
+
+# Grant permission to bind the gitops-role
+echo_info "Granting permission to bind gitops-role..."
+kubectl --context kind-$CLUSTER_NAME patch clusterrole gitops-registration-controller --type='json' -p='[{"op": "add", "path": "/rules/-", "value": {"apiGroups": ["rbac.authorization.k8s.io"], "resources": ["clusterroles"], "verbs": ["bind"], "resourceNames": ["gitops-role"]}}]'
 
 # Apply ConfigMap
 echo_info "Applying service configuration..."
@@ -144,7 +184,11 @@ spec:
           name: gitops-registration-config
 EOF
 
-kubectl --context kind-$CLUSTER_NAME apply -f deploy/knative-service-local.yaml
+# Deploy Knative service with the correct image
+echo_info "Deploying Knative service..."
+sed -e "s|quay.io/bcook/gitops-registration:latest|$IMAGE_NAME|g" \
+    -e "s|imagePullPolicy: Always|imagePullPolicy: $IMAGE_PULL_POLICY|g" \
+    deploy/knative-service-local.yaml | kubectl --context kind-$CLUSTER_NAME apply -f -
 
 # Wait for deployment to be ready
 echo_info "Waiting for service to be ready..."

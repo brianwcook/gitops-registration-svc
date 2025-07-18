@@ -1,0 +1,1175 @@
+=== RUN   TestMain_ConfigurationLoading
+=== RUN   TestMain_ConfigurationLoading/Logger_initialization
+=== RUN   TestMain_ConfigurationLoading/Environment_variable_handling
+--- PASS: TestMain_ConfigurationLoading (0.00s)
+    --- PASS: TestMain_ConfigurationLoading/Logger_initialization (0.00s)
+    --- PASS: TestMain_ConfigurationLoading/Environment_variable_handling (0.00s)
+=== RUN   TestMain_SignalHandling
+=== RUN   TestMain_SignalHandling/Signal_channel_creation
+--- PASS: TestMain_SignalHandling (0.00s)
+    --- PASS: TestMain_SignalHandling/Signal_channel_creation (0.00s)
+=== RUN   TestMain_TimeoutHandling
+=== RUN   TestMain_TimeoutHandling/Shutdown_timeout_configuration
+--- PASS: TestMain_TimeoutHandling (0.00s)
+    --- PASS: TestMain_TimeoutHandling/Shutdown_timeout_configuration (0.00s)
+=== RUN   TestMain_LoggerConfiguration
+=== RUN   TestMain_LoggerConfiguration/JSON_formatter_configuration
+=== RUN   TestMain_LoggerConfiguration/Log_level_configuration
+--- PASS: TestMain_LoggerConfiguration (0.00s)
+    --- PASS: TestMain_LoggerConfiguration/JSON_formatter_configuration (0.00s)
+    --- PASS: TestMain_LoggerConfiguration/Log_level_configuration (0.00s)
+=== RUN   TestMain_ErrorHandling
+=== RUN   TestMain_ErrorHandling/Configuration_error_patterns
+=== RUN   TestMain_ErrorHandling/Server_initialization_error_patterns
+--- PASS: TestMain_ErrorHandling (0.00s)
+    --- PASS: TestMain_ErrorHandling/Configuration_error_patterns (0.00s)
+    --- PASS: TestMain_ErrorHandling/Server_initialization_error_patterns (0.00s)
+=== RUN   TestMain_PortConfiguration
+=== RUN   TestMain_PortConfiguration/Default_port_handling
+--- PASS: TestMain_PortConfiguration (0.00s)
+    --- PASS: TestMain_PortConfiguration/Default_port_handling (0.00s)
+=== RUN   TestMain_StartupSequence
+=== RUN   TestMain_StartupSequence/Component_initialization_order
+--- PASS: TestMain_StartupSequence (0.00s)
+    --- PASS: TestMain_StartupSequence/Component_initialization_order (0.00s)
+=== RUN   TestMain_ComponentValidation
+=== RUN   TestMain_ComponentValidation/Required_components_exist
+--- PASS: TestMain_ComponentValidation (0.00s)
+    --- PASS: TestMain_ComponentValidation/Required_components_exist (0.00s)
+PASS
+coverage: 0.0% of statements
+ok  	github.com/konflux-ci/gitops-registration-service/cmd/server	1.975s	coverage: 0.0% of statements
+=== RUN   TestLoad_Defaults
+--- PASS: TestLoad_Defaults (0.00s)
+=== RUN   TestLoad_EnvironmentVariables
+--- PASS: TestLoad_EnvironmentVariables (0.00s)
+=== RUN   TestLoad_ConfigFile
+--- PASS: TestLoad_ConfigFile (0.00s)
+=== RUN   TestLoad_EnvironmentOverridesFile
+--- PASS: TestLoad_EnvironmentOverridesFile (0.00s)
+=== RUN   TestLoad_InvalidConfigFile
+--- PASS: TestLoad_InvalidConfigFile (0.00s)
+=== RUN   TestLoad_NonExistentConfigFile
+--- PASS: TestLoad_NonExistentConfigFile (0.00s)
+=== RUN   TestLoad_InvalidEnvironmentVariables
+=== RUN   TestLoad_InvalidEnvironmentVariables/invalid_port
+=== RUN   TestLoad_InvalidEnvironmentVariables/invalid_allow_new_namespaces
+--- PASS: TestLoad_InvalidEnvironmentVariables (0.00s)
+    --- PASS: TestLoad_InvalidEnvironmentVariables/invalid_port (0.00s)
+    --- PASS: TestLoad_InvalidEnvironmentVariables/invalid_allow_new_namespaces (0.00s)
+=== RUN   TestValidateResourceRestrictions
+=== RUN   TestValidateResourceRestrictions/Valid_allowList_only
+=== RUN   TestValidateResourceRestrictions/Valid_denyList_only
+=== RUN   TestValidateResourceRestrictions/Neither_allowList_nor_denyList
+=== RUN   TestValidateResourceRestrictions/Both_allowList_and_denyList_provided
+=== RUN   TestValidateResourceRestrictions/allowList_with_empty_kind
+=== RUN   TestValidateResourceRestrictions/denyList_with_empty_kind
+=== RUN   TestValidateResourceRestrictions/allowList_with_empty_group_(valid_for_core_resources)
+--- PASS: TestValidateResourceRestrictions (0.00s)
+    --- PASS: TestValidateResourceRestrictions/Valid_allowList_only (0.00s)
+    --- PASS: TestValidateResourceRestrictions/Valid_denyList_only (0.00s)
+    --- PASS: TestValidateResourceRestrictions/Neither_allowList_nor_denyList (0.00s)
+    --- PASS: TestValidateResourceRestrictions/Both_allowList_and_denyList_provided (0.00s)
+    --- PASS: TestValidateResourceRestrictions/allowList_with_empty_kind (0.00s)
+    --- PASS: TestValidateResourceRestrictions/denyList_with_empty_kind (0.00s)
+    --- PASS: TestValidateResourceRestrictions/allowList_with_empty_group_(valid_for_core_resources) (0.00s)
+=== RUN   TestLoad_ConfigFile_WithResourceRestrictions
+--- PASS: TestLoad_ConfigFile_WithResourceRestrictions (0.00s)
+=== RUN   TestLoad_ConfigFile_WithInvalidResourceRestrictions
+--- PASS: TestLoad_ConfigFile_WithInvalidResourceRestrictions (0.00s)
+=== RUN   TestLoadFromFile_Success
+--- PASS: TestLoadFromFile_Success (0.00s)
+=== RUN   TestLoadFromFile_FileNotFound
+--- PASS: TestLoadFromFile_FileNotFound (0.00s)
+=== RUN   TestLoadFromFile_InvalidYAML
+--- PASS: TestLoadFromFile_InvalidYAML (0.00s)
+=== RUN   TestConfig_ValidateImpersonationConfig
+=== RUN   TestConfig_ValidateImpersonationConfig/Impersonation_disabled_-_should_pass
+=== RUN   TestConfig_ValidateImpersonationConfig/Impersonation_enabled_with_valid_config
+=== RUN   TestConfig_ValidateImpersonationConfig/Impersonation_enabled_but_missing_ClusterRole
+=== RUN   TestConfig_ValidateImpersonationConfig/Impersonation_enabled_but_missing_ServiceAccountBaseName
+=== RUN   TestConfig_ValidateImpersonationConfig/Impersonation_enabled_but_both_fields_missing
+--- PASS: TestConfig_ValidateImpersonationConfig (0.00s)
+    --- PASS: TestConfig_ValidateImpersonationConfig/Impersonation_disabled_-_should_pass (0.00s)
+    --- PASS: TestConfig_ValidateImpersonationConfig/Impersonation_enabled_with_valid_config (0.00s)
+    --- PASS: TestConfig_ValidateImpersonationConfig/Impersonation_enabled_but_missing_ClusterRole (0.00s)
+    --- PASS: TestConfig_ValidateImpersonationConfig/Impersonation_enabled_but_missing_ServiceAccountBaseName (0.00s)
+    --- PASS: TestConfig_ValidateImpersonationConfig/Impersonation_enabled_but_both_fields_missing (0.00s)
+=== RUN   TestConfig_Load_EdgeCases
+=== RUN   TestConfig_Load_EdgeCases/Load_with_CONFIG_PATH_not_set
+=== RUN   TestConfig_Load_EdgeCases/Load_with_invalid_config_file_path
+=== RUN   TestConfig_Load_EdgeCases/Load_with_invalid_YAML_file
+--- PASS: TestConfig_Load_EdgeCases (0.00s)
+    --- PASS: TestConfig_Load_EdgeCases/Load_with_CONFIG_PATH_not_set (0.00s)
+    --- PASS: TestConfig_Load_EdgeCases/Load_with_invalid_config_file_path (0.00s)
+    --- PASS: TestConfig_Load_EdgeCases/Load_with_invalid_YAML_file (0.00s)
+=== RUN   TestConfig_Comprehensive_Validation
+=== RUN   TestConfig_Comprehensive_Validation/Complete_valid_config_with_all_features
+=== RUN   TestConfig_Comprehensive_Validation/Config_with_default_values_applied
+--- PASS: TestConfig_Comprehensive_Validation (0.00s)
+    --- PASS: TestConfig_Comprehensive_Validation/Complete_valid_config_with_all_features (0.00s)
+    --- PASS: TestConfig_Comprehensive_Validation/Config_with_default_values_applied (0.00s)
+PASS
+coverage: 96.2% of statements
+ok  	github.com/konflux-ci/gitops-registration-service/internal/config	2.097s	coverage: 96.2% of statements
+=== RUN   TestRegistrationHandler_CreateRegistration_Success
+    handlers_test.go:324: PASS:	ExtractUserInfo(string,string)
+    handlers_test.go:325: PASS:	IsNewNamespaceAllowed(string)
+    handlers_test.go:326: PASS:	ValidateRegistration(string,mock.AnythingOfTypeArgument)
+    handlers_test.go:326: PASS:	CreateRegistration(string,mock.AnythingOfTypeArgument)
+--- PASS: TestRegistrationHandler_CreateRegistration_Success (0.00s)
+=== RUN   TestRegistrationHandler_CreateRegistration_InvalidJSON
+--- PASS: TestRegistrationHandler_CreateRegistration_InvalidJSON (0.00s)
+=== RUN   TestRegistrationHandler_CreateRegistration_NoAuth
+--- PASS: TestRegistrationHandler_CreateRegistration_NoAuth (0.00s)
+=== RUN   TestRegistrationHandler_CreateRegistration_RegistrationDisabled
+    handlers_test.go:407: PASS:	ExtractUserInfo(string,string)
+    handlers_test.go:408: PASS:	IsNewNamespaceAllowed(string)
+--- PASS: TestRegistrationHandler_CreateRegistration_RegistrationDisabled (0.00s)
+=== RUN   TestRegistrationHandler_RegisterExistingNamespace_Success
+    handlers_test.go:453: PASS:	ExtractUserInfo(string,string)
+    handlers_test.go:453: PASS:	ValidateNamespaceAccess(string,*types.UserInfo,string)
+    handlers_test.go:454: PASS:	ValidateExistingNamespaceRequest(string,mock.AnythingOfTypeArgument)
+    handlers_test.go:454: PASS:	RegisterExistingNamespace(string,mock.AnythingOfTypeArgument,*types.UserInfo)
+--- PASS: TestRegistrationHandler_RegisterExistingNamespace_Success (0.00s)
+=== RUN   TestRegistrationHandler_RegisterExistingNamespace_InsufficientPermissions
+--- PASS: TestRegistrationHandler_RegisterExistingNamespace_InsufficientPermissions (0.00s)
+=== RUN   TestRegistrationHandler_ListRegistrations_Success
+    handlers_test.go:518: PASS:	ListRegistrations(string,mock.AnythingOfTypeArgument)
+--- PASS: TestRegistrationHandler_ListRegistrations_Success (0.00s)
+=== RUN   TestRegistrationHandler_GetRegistration_Success
+    handlers_test.go:550: PASS:	GetRegistration(string,string)
+--- PASS: TestRegistrationHandler_GetRegistration_Success (0.00s)
+=== RUN   TestRegistrationHandler_GetRegistration_NotFound
+--- PASS: TestRegistrationHandler_GetRegistration_NotFound (0.00s)
+=== RUN   TestRegistrationHandler_DeleteRegistration_Success
+    handlers_test.go:593: PASS:	DeleteRegistration(string,string)
+--- PASS: TestRegistrationHandler_DeleteRegistration_Success (0.00s)
+=== RUN   TestExtractUserInfo_Success
+    handlers_test.go:610: PASS:	ExtractUserInfo(string,string)
+--- PASS: TestExtractUserInfo_Success (0.00s)
+=== RUN   TestExtractUserInfo_NoAuthHeader
+--- PASS: TestExtractUserInfo_NoAuthHeader (0.00s)
+=== RUN   TestRegistrationHandler_ErrorPaths
+=== RUN   TestRegistrationHandler_ErrorPaths/isNamespaceConflictError_returns_true_for_NamespaceConflictError
+=== RUN   TestRegistrationHandler_ErrorPaths/isNamespaceConflictError_returns_false_for_other_errors
+=== RUN   TestRegistrationHandler_ErrorPaths/isRepositoryConflictError_returns_true_for_repository_conflict
+=== RUN   TestRegistrationHandler_ErrorPaths/isRepositoryConflictError_returns_false_for_other_errors
+=== RUN   TestRegistrationHandler_ErrorPaths/GetRegistrationStatus_endpoint
+    handlers_test.go:677: PASS:	GetRegistration(string,string)
+=== RUN   TestRegistrationHandler_ErrorPaths/GetRegistrationStatus_error
+    handlers_test.go:697: PASS:	GetRegistration(string,string)
+=== RUN   TestRegistrationHandler_ErrorPaths/SyncRegistration_endpoint
+--- PASS: TestRegistrationHandler_ErrorPaths (0.00s)
+    --- PASS: TestRegistrationHandler_ErrorPaths/isNamespaceConflictError_returns_true_for_NamespaceConflictError (0.00s)
+    --- PASS: TestRegistrationHandler_ErrorPaths/isNamespaceConflictError_returns_false_for_other_errors (0.00s)
+    --- PASS: TestRegistrationHandler_ErrorPaths/isRepositoryConflictError_returns_true_for_repository_conflict (0.00s)
+    --- PASS: TestRegistrationHandler_ErrorPaths/isRepositoryConflictError_returns_false_for_other_errors (0.00s)
+    --- PASS: TestRegistrationHandler_ErrorPaths/GetRegistrationStatus_endpoint (0.00s)
+    --- PASS: TestRegistrationHandler_ErrorPaths/GetRegistrationStatus_error (0.00s)
+    --- PASS: TestRegistrationHandler_ErrorPaths/SyncRegistration_endpoint (0.00s)
+=== RUN   TestRegistrationHandler_CreateRegistration_ValidationErrors
+=== RUN   TestRegistrationHandler_CreateRegistration_ValidationErrors/Validation_error
+    handlers_test.go:748: PASS:	ExtractUserInfo(string,string)
+    handlers_test.go:749: PASS:	ValidateRegistration(string,mock.AnythingOfTypeArgument)
+=== RUN   TestRegistrationHandler_CreateRegistration_ValidationErrors/Repository_conflict_error
+    handlers_test.go:787: PASS:	ExtractUserInfo(string,string)
+    handlers_test.go:788: PASS:	ValidateRegistration(string,mock.AnythingOfTypeArgument)
+    handlers_test.go:788: PASS:	CreateRegistration(string,mock.AnythingOfTypeArgument)
+    handlers_test.go:789: PASS:	IsNewNamespaceAllowed(string)
+=== RUN   TestRegistrationHandler_CreateRegistration_ValidationErrors/Namespace_conflict_error
+    handlers_test.go:827: PASS:	ExtractUserInfo(string,string)
+    handlers_test.go:828: PASS:	ValidateRegistration(string,mock.AnythingOfTypeArgument)
+    handlers_test.go:828: PASS:	CreateRegistration(string,mock.AnythingOfTypeArgument)
+    handlers_test.go:829: PASS:	IsNewNamespaceAllowed(string)
+--- PASS: TestRegistrationHandler_CreateRegistration_ValidationErrors (0.00s)
+    --- PASS: TestRegistrationHandler_CreateRegistration_ValidationErrors/Validation_error (0.00s)
+    --- PASS: TestRegistrationHandler_CreateRegistration_ValidationErrors/Repository_conflict_error (0.00s)
+    --- PASS: TestRegistrationHandler_CreateRegistration_ValidationErrors/Namespace_conflict_error (0.00s)
+=== RUN   TestRegistrationHandler_RegisterExistingNamespace_ValidationErrors
+=== RUN   TestRegistrationHandler_RegisterExistingNamespace_ValidationErrors/Validation_error
+    handlers_test.go:857: PASS:	ValidateExistingNamespaceRequest(string,mock.AnythingOfTypeArgument)
+=== RUN   TestRegistrationHandler_RegisterExistingNamespace_ValidationErrors/Authentication_error
+    handlers_test.go:886: PASS:	ValidateExistingNamespaceRequest(string,mock.AnythingOfTypeArgument)
+    handlers_test.go:887: PASS:	ExtractUserInfo(string,string)
+=== RUN   TestRegistrationHandler_RegisterExistingNamespace_ValidationErrors/Invalid_JSON_in_request
+--- PASS: TestRegistrationHandler_RegisterExistingNamespace_ValidationErrors (0.00s)
+    --- PASS: TestRegistrationHandler_RegisterExistingNamespace_ValidationErrors/Validation_error (0.00s)
+    --- PASS: TestRegistrationHandler_RegisterExistingNamespace_ValidationErrors/Authentication_error (0.00s)
+    --- PASS: TestRegistrationHandler_RegisterExistingNamespace_ValidationErrors/Invalid_JSON_in_request (0.00s)
+=== RUN   TestRegistrationHandler_ComprehensiveEdgeCases
+=== RUN   TestRegistrationHandler_ComprehensiveEdgeCases/CreateRegistration_-_Missing_ID_in_URL_param
+=== RUN   TestRegistrationHandler_ComprehensiveEdgeCases/SyncRegistration_-_Missing_ID_in_URL_param
+=== RUN   TestRegistrationHandler_ComprehensiveEdgeCases/CreateRegistration_-_Authorization_extraction_failure
+=== RUN   TestRegistrationHandler_ComprehensiveEdgeCases/CreateRegistration_-_Invalid_Bearer_token_format
+=== RUN   TestRegistrationHandler_ComprehensiveEdgeCases/RegisterExistingNamespace_-_Insufficient_permissions
+    handlers_test.go:999: PASS:	ValidateExistingNamespaceRequest(string,mock.AnythingOfTypeArgument)
+    handlers_test.go:1000: PASS:	ExtractUserInfo(string,string)
+    handlers_test.go:1000: PASS:	ValidateNamespaceAccess(string,*types.UserInfo,string)
+=== RUN   TestRegistrationHandler_ComprehensiveEdgeCases/RegisterExistingNamespace_-_Registration_failure
+    handlers_test.go:1038: PASS:	ValidateExistingNamespaceRequest(string,mock.AnythingOfTypeArgument)
+    handlers_test.go:1038: PASS:	RegisterExistingNamespace(string,mock.AnythingOfTypeArgument,*types.UserInfo)
+    handlers_test.go:1039: PASS:	ExtractUserInfo(string,string)
+    handlers_test.go:1039: PASS:	ValidateNamespaceAccess(string,*types.UserInfo,string)
+=== RUN   TestRegistrationHandler_ComprehensiveEdgeCases/DeleteRegistration_-_Missing_ID_parameter
+=== RUN   TestRegistrationHandler_ComprehensiveEdgeCases/GetRegistration_-_Missing_ID_parameter
+=== RUN   TestRegistrationHandler_ComprehensiveEdgeCases/ListRegistrations_-_Error_case
+    handlers_test.go:1083: PASS:	ListRegistrations(string,mock.AnythingOfTypeArgument)
+=== RUN   TestRegistrationHandler_ComprehensiveEdgeCases/ExtractUserInfo_-_Invalid_token_format
+=== RUN   TestRegistrationHandler_ComprehensiveEdgeCases/ExtractUserInfo_-_Service_error
+    handlers_test.go:1109: PASS:	ExtractUserInfo(string,string)
+--- PASS: TestRegistrationHandler_ComprehensiveEdgeCases (0.01s)
+    --- PASS: TestRegistrationHandler_ComprehensiveEdgeCases/CreateRegistration_-_Missing_ID_in_URL_param (0.00s)
+    --- PASS: TestRegistrationHandler_ComprehensiveEdgeCases/SyncRegistration_-_Missing_ID_in_URL_param (0.00s)
+    --- PASS: TestRegistrationHandler_ComprehensiveEdgeCases/CreateRegistration_-_Authorization_extraction_failure (0.00s)
+    --- PASS: TestRegistrationHandler_ComprehensiveEdgeCases/CreateRegistration_-_Invalid_Bearer_token_format (0.00s)
+    --- PASS: TestRegistrationHandler_ComprehensiveEdgeCases/RegisterExistingNamespace_-_Insufficient_permissions (0.00s)
+    --- PASS: TestRegistrationHandler_ComprehensiveEdgeCases/RegisterExistingNamespace_-_Registration_failure (0.00s)
+    --- PASS: TestRegistrationHandler_ComprehensiveEdgeCases/DeleteRegistration_-_Missing_ID_parameter (0.00s)
+    --- PASS: TestRegistrationHandler_ComprehensiveEdgeCases/GetRegistration_-_Missing_ID_parameter (0.00s)
+    --- PASS: TestRegistrationHandler_ComprehensiveEdgeCases/ListRegistrations_-_Error_case (0.00s)
+    --- PASS: TestRegistrationHandler_ComprehensiveEdgeCases/ExtractUserInfo_-_Invalid_token_format (0.00s)
+    --- PASS: TestRegistrationHandler_ComprehensiveEdgeCases/ExtractUserInfo_-_Service_error (0.00s)
+PASS
+coverage: 88.9% of statements
+ok  	github.com/konflux-ci/gitops-registration-service/internal/handlers	2.614s	coverage: 88.9% of statements
+=== RUN   TestHealthLive_Success
+--- PASS: TestHealthLive_Success (0.00s)
+=== RUN   TestHealthReady_Success
+    server_test.go:295: PASS:	HealthCheck(string)
+    server_test.go:296: PASS:	HealthCheck(string)
+--- PASS: TestHealthReady_Success (0.00s)
+=== RUN   TestHealthReady_KubernetesFailure
+    server_test.go:315: PASS:	HealthCheck(string)
+--- PASS: TestHealthReady_KubernetesFailure (0.00s)
+=== RUN   TestHealthReady_ArgoCDFailure
+    server_test.go:335: PASS:	HealthCheck(string)
+    server_test.go:336: PASS:	HealthCheck(string)
+--- PASS: TestHealthReady_ArgoCDFailure (0.00s)
+=== RUN   TestCheckDependencies_Success
+    server_test.go:349: PASS:	HealthCheck(string)
+    server_test.go:350: PASS:	HealthCheck(string)
+--- PASS: TestCheckDependencies_Success (0.00s)
+=== RUN   TestCheckDependencies_KubernetesFailure
+    server_test.go:363: PASS:	HealthCheck(string)
+--- PASS: TestCheckDependencies_KubernetesFailure (0.00s)
+=== RUN   TestCheckDependencies_ArgoCDFailure
+    server_test.go:377: PASS:	HealthCheck(string)
+    server_test.go:378: PASS:	HealthCheck(string)
+--- PASS: TestCheckDependencies_ArgoCDFailure (0.00s)
+=== RUN   TestSetupMiddleware
+--- PASS: TestSetupMiddleware (0.00s)
+=== RUN   TestSetupRoutes
+=== RUN   TestSetupRoutes/health_live_endpoint
+=== RUN   TestSetupRoutes/health_ready_endpoint
+    server_test.go:439: Health ready endpoint requires mock setup - tested separately
+=== RUN   TestSetupRoutes/metrics_endpoint
+=== RUN   TestSetupRoutes/non-existent_endpoint
+--- PASS: TestSetupRoutes (0.00s)
+    --- PASS: TestSetupRoutes/health_live_endpoint (0.00s)
+    --- SKIP: TestSetupRoutes/health_ready_endpoint (0.00s)
+    --- PASS: TestSetupRoutes/metrics_endpoint (0.00s)
+    --- PASS: TestSetupRoutes/non-existent_endpoint (0.00s)
+=== RUN   TestServer_MiddlewareOrder
+--- PASS: TestServer_MiddlewareOrder (0.00s)
+=== RUN   TestServer_HealthEndpoints_Isolated
+=== RUN   TestServer_HealthEndpoints_Isolated/Health_live_endpoint
+=== RUN   TestServer_HealthEndpoints_Isolated/Health_ready_endpoint_-_success
+    server_test.go:531: PASS:	HealthCheck(string)
+    server_test.go:532: PASS:	HealthCheck(string)
+=== RUN   TestServer_HealthEndpoints_Isolated/Health_ready_endpoint_-_k8s_failure
+    server_test.go:548: PASS:	HealthCheck(string)
+=== RUN   TestServer_HealthEndpoints_Isolated/Health_ready_endpoint_-_argocd_failure
+    server_test.go:565: PASS:	HealthCheck(string)
+    server_test.go:566: PASS:	HealthCheck(string)
+--- PASS: TestServer_HealthEndpoints_Isolated (0.00s)
+    --- PASS: TestServer_HealthEndpoints_Isolated/Health_live_endpoint (0.00s)
+    --- PASS: TestServer_HealthEndpoints_Isolated/Health_ready_endpoint_-_success (0.00s)
+    --- PASS: TestServer_HealthEndpoints_Isolated/Health_ready_endpoint_-_k8s_failure (0.00s)
+    --- PASS: TestServer_HealthEndpoints_Isolated/Health_ready_endpoint_-_argocd_failure (0.00s)
+=== RUN   TestServer_SetupMiddleware_Unit
+--- PASS: TestServer_SetupMiddleware_Unit (0.00s)
+=== RUN   TestServer_SetupRoutes_Unit
+=== RUN   TestServer_SetupRoutes_Unit/GET_/health/live
+=== RUN   TestServer_SetupRoutes_Unit/GET_/metrics
+=== RUN   TestServer_SetupRoutes_Unit/GET_/api/v1/registrations
+    server_test.go:688: PASS:	ListRegistrations(string,mock.AnythingOfTypeArgument)
+=== RUN   TestServer_SetupRoutes_Unit/POST_/api/v1/registrations
+--- PASS: TestServer_SetupRoutes_Unit (0.00s)
+    --- PASS: TestServer_SetupRoutes_Unit/GET_/health/live (0.00s)
+    --- PASS: TestServer_SetupRoutes_Unit/GET_/metrics (0.00s)
+    --- PASS: TestServer_SetupRoutes_Unit/GET_/api/v1/registrations (0.00s)
+    --- PASS: TestServer_SetupRoutes_Unit/POST_/api/v1/registrations (0.00s)
+=== RUN   TestServer_CheckDependencies_Unit
+=== RUN   TestServer_CheckDependencies_Unit/Dependencies_healthy
+    server_test.go:716: PASS:	HealthCheck(string)
+    server_test.go:717: PASS:	HealthCheck(string)
+=== RUN   TestServer_CheckDependencies_Unit/Kubernetes_unhealthy
+    server_test.go:739: PASS:	HealthCheck(string)
+=== RUN   TestServer_CheckDependencies_Unit/ArgoCD_unhealthy
+    server_test.go:762: PASS:	HealthCheck(string)
+    server_test.go:763: PASS:	HealthCheck(string)
+--- PASS: TestServer_CheckDependencies_Unit (0.00s)
+    --- PASS: TestServer_CheckDependencies_Unit/Dependencies_healthy (0.00s)
+    --- PASS: TestServer_CheckDependencies_Unit/Kubernetes_unhealthy (0.00s)
+    --- PASS: TestServer_CheckDependencies_Unit/ArgoCD_unhealthy (0.00s)
+=== RUN   TestServer_Shutdown_Unit
+--- PASS: TestServer_Shutdown_Unit (0.00s)
+=== RUN   TestServer_New_ErrorHandling
+=== RUN   TestServer_New_ErrorHandling/Server_creation_without_Kubernetes_environment
+=== RUN   TestServer_New_ErrorHandling/Server_creation_with_nil_config
+=== RUN   TestServer_New_ErrorHandling/Server_creation_with_nil_logger
+--- PASS: TestServer_New_ErrorHandling (0.00s)
+    --- PASS: TestServer_New_ErrorHandling/Server_creation_without_Kubernetes_environment (0.00s)
+    --- PASS: TestServer_New_ErrorHandling/Server_creation_with_nil_config (0.00s)
+    --- PASS: TestServer_New_ErrorHandling/Server_creation_with_nil_logger (0.00s)
+=== RUN   TestServer_Configuration_Validation
+=== RUN   TestServer_Configuration_Validation/Server_with_complete_configuration
+--- PASS: TestServer_Configuration_Validation (0.00s)
+    --- PASS: TestServer_Configuration_Validation/Server_with_complete_configuration (0.00s)
+=== RUN   TestServer_ComponentIntegration
+=== RUN   TestServer_ComponentIntegration/Server_structure_with_all_components
+--- PASS: TestServer_ComponentIntegration (0.00s)
+    --- PASS: TestServer_ComponentIntegration/Server_structure_with_all_components (0.00s)
+=== RUN   TestServer_New_Comprehensive
+=== RUN   TestServer_New_Comprehensive/Server_creation_error_paths
+=== RUN   TestServer_New_Comprehensive/Server_creation_with_various_configurations
+=== RUN   TestServer_New_Comprehensive/Server_creation_with_various_configurations/Config_variation_1
+=== RUN   TestServer_New_Comprehensive/Server_creation_with_various_configurations/Config_variation_2
+--- PASS: TestServer_New_Comprehensive (0.00s)
+    --- PASS: TestServer_New_Comprehensive/Server_creation_error_paths (0.00s)
+    --- PASS: TestServer_New_Comprehensive/Server_creation_with_various_configurations (0.00s)
+        --- PASS: TestServer_New_Comprehensive/Server_creation_with_various_configurations/Config_variation_1 (0.00s)
+        --- PASS: TestServer_New_Comprehensive/Server_creation_with_various_configurations/Config_variation_2 (0.00s)
+=== RUN   TestServer_Start_Operations
+=== RUN   TestServer_Start_Operations/Server_start_with_invalid_port
+=== RUN   TestServer_Start_Operations/Server_creation_attempts
+--- PASS: TestServer_Start_Operations (0.00s)
+    --- PASS: TestServer_Start_Operations/Server_start_with_invalid_port (0.00s)
+    --- PASS: TestServer_Start_Operations/Server_creation_attempts (0.00s)
+=== RUN   TestServer_Health_Endpoints_Enhanced
+=== RUN   TestServer_Health_Endpoints_Enhanced/Health_endpoints_structure
+--- PASS: TestServer_Health_Endpoints_Enhanced (0.00s)
+    --- PASS: TestServer_Health_Endpoints_Enhanced/Health_endpoints_structure (0.00s)
+=== RUN   TestServer_Start_Comprehensive_Coverage
+=== RUN   TestServer_Start_Comprehensive_Coverage/Server_start_with_context_cancellation
+    server_test.go:1054: Server creation failed in test environment: failed to initialize services: failed to create kubernetes service: failed to create config: unable to load in-cluster configuration, KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT must be defined
+=== RUN   TestServer_Start_Comprehensive_Coverage/Server_start_with_quick_timeout_context
+    server_test.go:1095: Server creation failed in test environment: failed to initialize services: failed to create kubernetes service: failed to create config: unable to load in-cluster configuration, KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT must be defined
+=== RUN   TestServer_Start_Comprehensive_Coverage/Server_start_error_path_-_invalid_configuration
+    server_test.go:1124: Server creation failed as expected: failed to initialize services: failed to create kubernetes service: failed to create config: unable to load in-cluster configuration, KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT must be defined
+=== RUN   TestServer_Start_Comprehensive_Coverage/Server_start_and_shutdown_sequence
+    server_test.go:1148: Server creation failed in test environment: failed to initialize services: failed to create kubernetes service: failed to create config: unable to load in-cluster configuration, KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT must be defined
+--- PASS: TestServer_Start_Comprehensive_Coverage (0.00s)
+    --- SKIP: TestServer_Start_Comprehensive_Coverage/Server_start_with_context_cancellation (0.00s)
+    --- SKIP: TestServer_Start_Comprehensive_Coverage/Server_start_with_quick_timeout_context (0.00s)
+    --- PASS: TestServer_Start_Comprehensive_Coverage/Server_start_error_path_-_invalid_configuration (0.00s)
+    --- SKIP: TestServer_Start_Comprehensive_Coverage/Server_start_and_shutdown_sequence (0.00s)
+PASS
+coverage: 61.3% of statements
+ok  	github.com/konflux-ci/gitops-registration-service/internal/server	3.169s	coverage: 61.3% of statements
+=== RUN   TestConvertResourceListToInterface
+=== RUN   TestConvertResourceListToInterface/Empty_resource_list
+=== RUN   TestConvertResourceListToInterface/Single_resource_with_group
+=== RUN   TestConvertResourceListToInterface/Single_resource_without_group_(core_resource)
+=== RUN   TestConvertResourceListToInterface/Multiple_resources
+--- PASS: TestConvertResourceListToInterface (0.00s)
+    --- PASS: TestConvertResourceListToInterface/Empty_resource_list (0.00s)
+    --- PASS: TestConvertResourceListToInterface/Single_resource_with_group (0.00s)
+    --- PASS: TestConvertResourceListToInterface/Single_resource_without_group_(core_resource) (0.00s)
+    --- PASS: TestConvertResourceListToInterface/Multiple_resources (0.00s)
+=== RUN   TestBuildProjectSpec_BasicStructure
+--- PASS: TestBuildProjectSpec_BasicStructure (0.00s)
+=== RUN   TestAddResourceRestrictions_WithWhitelist
+--- PASS: TestAddResourceRestrictions_WithWhitelist (0.00s)
+=== RUN   TestAddResourceRestrictions_WithBlacklist
+--- PASS: TestAddResourceRestrictions_WithBlacklist (0.00s)
+=== RUN   TestAddResourceRestrictions_NoRestrictions
+--- PASS: TestAddResourceRestrictions_NoRestrictions (0.00s)
+=== RUN   TestArgoCDService_DataStructures
+--- PASS: TestArgoCDService_DataStructures (0.00s)
+=== RUN   TestArgoCDService_UtilityFunctions_Coverage
+--- PASS: TestArgoCDService_UtilityFunctions_Coverage (0.00s)
+=== RUN   TestTypes_AppProject_Structure
+--- PASS: TestTypes_AppProject_Structure (0.00s)
+=== RUN   TestTypes_Application_Structure
+--- PASS: TestTypes_Application_Structure (0.00s)
+=== RUN   TestBuildAppProjectResource
+--- PASS: TestBuildAppProjectResource (0.00s)
+=== RUN   TestNewArgoCDServiceReal_Constructor
+=== RUN   TestNewArgoCDServiceReal_Constructor/Constructor_fails_outside_Kubernetes_cluster
+=== RUN   TestNewArgoCDServiceReal_Constructor/Constructor_with_nil_config
+=== RUN   TestNewArgoCDServiceReal_Constructor/Constructor_with_nil_logger
+--- PASS: TestNewArgoCDServiceReal_Constructor (0.00s)
+    --- PASS: TestNewArgoCDServiceReal_Constructor/Constructor_fails_outside_Kubernetes_cluster (0.00s)
+    --- PASS: TestNewArgoCDServiceReal_Constructor/Constructor_with_nil_config (0.00s)
+    --- PASS: TestNewArgoCDServiceReal_Constructor/Constructor_with_nil_logger (0.00s)
+=== RUN   TestArgoCDService_StructureValidation
+=== RUN   TestArgoCDService_StructureValidation/argoCDService_struct_implements_ArgoCDService_interface
+--- PASS: TestArgoCDService_StructureValidation (0.00s)
+    --- PASS: TestArgoCDService_StructureValidation/argoCDService_struct_implements_ArgoCDService_interface (0.00s)
+=== RUN   TestArgoCDService_Constants
+=== RUN   TestArgoCDService_Constants/ArgoCD_API_constants_are_defined
+--- PASS: TestArgoCDService_Constants (0.00s)
+    --- PASS: TestArgoCDService_Constants/ArgoCD_API_constants_are_defined (0.00s)
+=== RUN   TestNewArgoCDServiceWithFactory
+=== RUN   TestNewArgoCDServiceWithFactory/Successful_service_creation_with_test_factory
+=== RUN   TestNewArgoCDServiceWithFactory/Factory_config_creation_fails
+=== RUN   TestNewArgoCDServiceWithFactory/Factory_dynamic_client_creation_fails
+=== RUN   TestNewArgoCDServiceWithFactory/Service_created_with_custom_fake_client
+=== RUN   TestNewArgoCDServiceWithFactory/Service_configuration_validation
+=== RUN   TestNewArgoCDServiceWithFactory/Error_handling_scenarios
+--- PASS: TestNewArgoCDServiceWithFactory (0.00s)
+    --- PASS: TestNewArgoCDServiceWithFactory/Successful_service_creation_with_test_factory (0.00s)
+    --- PASS: TestNewArgoCDServiceWithFactory/Factory_config_creation_fails (0.00s)
+    --- PASS: TestNewArgoCDServiceWithFactory/Factory_dynamic_client_creation_fails (0.00s)
+    --- PASS: TestNewArgoCDServiceWithFactory/Service_created_with_custom_fake_client (0.00s)
+    --- PASS: TestNewArgoCDServiceWithFactory/Service_configuration_validation (0.00s)
+    --- PASS: TestNewArgoCDServiceWithFactory/Error_handling_scenarios (0.00s)
+=== RUN   TestArgoCDServiceWithFakeClient_Operations
+=== RUN   TestArgoCDServiceWithFakeClient_Operations/Basic_service_operations
+=== RUN   TestArgoCDServiceWithFakeClient_Operations/Service_with_custom_ArgoCD_namespace
+=== RUN   TestArgoCDServiceWithFakeClient_Operations/Error_handling_scenarios
+--- PASS: TestArgoCDServiceWithFakeClient_Operations (0.00s)
+    --- PASS: TestArgoCDServiceWithFakeClient_Operations/Basic_service_operations (0.00s)
+    --- PASS: TestArgoCDServiceWithFakeClient_Operations/Service_with_custom_ArgoCD_namespace (0.00s)
+    --- PASS: TestArgoCDServiceWithFakeClient_Operations/Error_handling_scenarios (0.00s)
+=== RUN   TestInClusterKubernetesFactory
+=== RUN   TestInClusterKubernetesFactory/CreateConfig_fails_outside_cluster
+=== RUN   TestInClusterKubernetesFactory/CreateClientset_with_valid_config
+    factories_test.go:42: Client creation succeeded unexpectedly but harmlessly
+--- PASS: TestInClusterKubernetesFactory (0.00s)
+    --- PASS: TestInClusterKubernetesFactory/CreateConfig_fails_outside_cluster (0.00s)
+    --- PASS: TestInClusterKubernetesFactory/CreateClientset_with_valid_config (0.00s)
+=== RUN   TestInClusterArgoCDFactory
+=== RUN   TestInClusterArgoCDFactory/CreateConfig_fails_outside_cluster
+=== RUN   TestInClusterArgoCDFactory/CreateDynamicClient_with_valid_config
+    factories_test.go:74: Dynamic client creation succeeded unexpectedly but harmlessly
+--- PASS: TestInClusterArgoCDFactory (0.00s)
+    --- PASS: TestInClusterArgoCDFactory/CreateConfig_fails_outside_cluster (0.00s)
+    --- PASS: TestInClusterArgoCDFactory/CreateDynamicClient_with_valid_config (0.00s)
+=== RUN   TestTestKubernetesFactory
+=== RUN   TestTestKubernetesFactory/Default_factory_creates_working_clients
+=== RUN   TestTestKubernetesFactory/Factory_with_custom_client
+=== RUN   TestTestKubernetesFactory/Factory_with_custom_config
+=== RUN   TestTestKubernetesFactory/Factory_returns_errors_when_configured
+--- PASS: TestTestKubernetesFactory (0.00s)
+    --- PASS: TestTestKubernetesFactory/Default_factory_creates_working_clients (0.00s)
+    --- PASS: TestTestKubernetesFactory/Factory_with_custom_client (0.00s)
+    --- PASS: TestTestKubernetesFactory/Factory_with_custom_config (0.00s)
+    --- PASS: TestTestKubernetesFactory/Factory_returns_errors_when_configured (0.00s)
+=== RUN   TestTestArgoCDFactory
+=== RUN   TestTestArgoCDFactory/Default_factory_creates_working_clients
+=== RUN   TestTestArgoCDFactory/Factory_with_custom_client
+=== RUN   TestTestArgoCDFactory/Factory_with_custom_config_and_scheme
+=== RUN   TestTestArgoCDFactory/Factory_returns_errors_when_configured
+--- PASS: TestTestArgoCDFactory (0.00s)
+    --- PASS: TestTestArgoCDFactory/Default_factory_creates_working_clients (0.00s)
+    --- PASS: TestTestArgoCDFactory/Factory_with_custom_client (0.00s)
+    --- PASS: TestTestArgoCDFactory/Factory_with_custom_config_and_scheme (0.00s)
+    --- PASS: TestTestArgoCDFactory/Factory_returns_errors_when_configured (0.00s)
+=== RUN   TestFactoryIntegration
+=== RUN   TestFactoryIntegration/Factories_implement_interfaces
+=== RUN   TestFactoryIntegration/Error_factories_work_correctly
+--- PASS: TestFactoryIntegration (0.00s)
+    --- PASS: TestFactoryIntegration/Factories_implement_interfaces (0.00s)
+    --- PASS: TestFactoryIntegration/Error_factories_work_correctly (0.00s)
+=== RUN   TestContains
+=== RUN   TestContains/Item_exists_in_slice
+=== RUN   TestContains/Item_does_not_exist_in_slice
+=== RUN   TestContains/Empty_slice
+=== RUN   TestContains/Empty_item
+--- PASS: TestContains (0.00s)
+    --- PASS: TestContains/Item_exists_in_slice (0.00s)
+    --- PASS: TestContains/Item_does_not_exist_in_slice (0.00s)
+    --- PASS: TestContains/Empty_slice (0.00s)
+    --- PASS: TestContains/Empty_item (0.00s)
+=== RUN   TestContainsAll
+=== RUN   TestContainsAll/All_items_exist
+=== RUN   TestContainsAll/Some_items_missing
+=== RUN   TestContainsAll/Empty_items_slice
+=== RUN   TestContainsAll/Empty_main_slice
+--- PASS: TestContainsAll (0.00s)
+    --- PASS: TestContainsAll/All_items_exist (0.00s)
+    --- PASS: TestContainsAll/Some_items_missing (0.00s)
+    --- PASS: TestContainsAll/Empty_items_slice (0.00s)
+    --- PASS: TestContainsAll/Empty_main_slice (0.00s)
+=== RUN   TestExtractRepositoryDomain
+=== RUN   TestExtractRepositoryDomain/GitHub_HTTPS_URL
+=== RUN   TestExtractRepositoryDomain/GitLab_HTTPS_URL
+=== RUN   TestExtractRepositoryDomain/GitHub_SSH_URL
+=== RUN   TestExtractRepositoryDomain/Custom_domain
+=== RUN   TestExtractRepositoryDomain/Invalid_URL
+=== RUN   TestExtractRepositoryDomain/Empty_URL
+--- PASS: TestExtractRepositoryDomain (0.00s)
+    --- PASS: TestExtractRepositoryDomain/GitHub_HTTPS_URL (0.00s)
+    --- PASS: TestExtractRepositoryDomain/GitLab_HTTPS_URL (0.00s)
+    --- PASS: TestExtractRepositoryDomain/GitHub_SSH_URL (0.00s)
+    --- PASS: TestExtractRepositoryDomain/Custom_domain (0.00s)
+    --- PASS: TestExtractRepositoryDomain/Invalid_URL (0.00s)
+    --- PASS: TestExtractRepositoryDomain/Empty_URL (0.00s)
+=== RUN   TestNamespaceConflictError
+--- PASS: TestNamespaceConflictError (0.00s)
+=== RUN   TestClusterRoleValidation_SecurityAnalysis
+--- PASS: TestClusterRoleValidation_SecurityAnalysis (0.00s)
+=== RUN   TestKubernetesService_Constants
+--- PASS: TestKubernetesService_Constants (0.00s)
+=== RUN   TestKubernetesService_LabelConstruction
+--- PASS: TestKubernetesService_LabelConstruction (0.00s)
+=== RUN   TestValidateClusterRole_Logic
+--- PASS: TestValidateClusterRole_Logic (0.00s)
+=== RUN   TestKubernetesService_ErrorHandling_Patterns
+=== RUN   TestKubernetesService_ErrorHandling_Patterns/Namespace_creation_error
+=== RUN   TestKubernetesService_ErrorHandling_Patterns/Namespace_deletion_error
+=== RUN   TestKubernetesService_ErrorHandling_Patterns/Service_account_creation_error
+--- PASS: TestKubernetesService_ErrorHandling_Patterns (0.00s)
+    --- PASS: TestKubernetesService_ErrorHandling_Patterns/Namespace_creation_error (0.00s)
+    --- PASS: TestKubernetesService_ErrorHandling_Patterns/Namespace_deletion_error (0.00s)
+    --- PASS: TestKubernetesService_ErrorHandling_Patterns/Service_account_creation_error (0.00s)
+=== RUN   TestKubernetesService_StructureValidation
+--- PASS: TestKubernetesService_StructureValidation (0.00s)
+=== RUN   TestKubernetesService_UtilityFunctions_EdgeCases
+=== RUN   TestKubernetesService_UtilityFunctions_EdgeCases/contains_with_empty_slice
+=== RUN   TestKubernetesService_UtilityFunctions_EdgeCases/contains_with_empty_string
+=== RUN   TestKubernetesService_UtilityFunctions_EdgeCases/containsAll_with_empty_items
+=== RUN   TestKubernetesService_UtilityFunctions_EdgeCases/containsAll_with_empty_slice
+=== RUN   TestKubernetesService_UtilityFunctions_EdgeCases/containsAll_both_empty
+--- PASS: TestKubernetesService_UtilityFunctions_EdgeCases (0.00s)
+    --- PASS: TestKubernetesService_UtilityFunctions_EdgeCases/contains_with_empty_slice (0.00s)
+    --- PASS: TestKubernetesService_UtilityFunctions_EdgeCases/contains_with_empty_string (0.00s)
+    --- PASS: TestKubernetesService_UtilityFunctions_EdgeCases/containsAll_with_empty_items (0.00s)
+    --- PASS: TestKubernetesService_UtilityFunctions_EdgeCases/containsAll_with_empty_slice (0.00s)
+    --- PASS: TestKubernetesService_UtilityFunctions_EdgeCases/containsAll_both_empty (0.00s)
+=== RUN   TestNewKubernetesServiceReal_Constructor
+=== RUN   TestNewKubernetesServiceReal_Constructor/Constructor_fails_outside_Kubernetes_cluster
+=== RUN   TestNewKubernetesServiceReal_Constructor/Constructor_with_nil_config
+=== RUN   TestNewKubernetesServiceReal_Constructor/Constructor_with_nil_logger
+--- PASS: TestNewKubernetesServiceReal_Constructor (0.00s)
+    --- PASS: TestNewKubernetesServiceReal_Constructor/Constructor_fails_outside_Kubernetes_cluster (0.00s)
+    --- PASS: TestNewKubernetesServiceReal_Constructor/Constructor_with_nil_config (0.00s)
+    --- PASS: TestNewKubernetesServiceReal_Constructor/Constructor_with_nil_logger (0.00s)
+=== RUN   TestKubernetesService_StructureValidation_Extended
+=== RUN   TestKubernetesService_StructureValidation_Extended/kubernetesService_struct_implements_KubernetesService_interface
+--- PASS: TestKubernetesService_StructureValidation_Extended (0.00s)
+    --- PASS: TestKubernetesService_StructureValidation_Extended/kubernetesService_struct_implements_KubernetesService_interface (0.00s)
+=== RUN   TestKubernetesService_LabelConstruction_Extended
+=== RUN   TestKubernetesService_LabelConstruction_Extended/Standard_label_construction_patterns
+--- PASS: TestKubernetesService_LabelConstruction_Extended (0.00s)
+    --- PASS: TestKubernetesService_LabelConstruction_Extended/Standard_label_construction_patterns (0.00s)
+=== RUN   TestKubernetesService_SecurityValidation_Extended
+=== RUN   TestKubernetesService_SecurityValidation_Extended/ClusterRole_validation_covers_security_considerations
+--- PASS: TestKubernetesService_SecurityValidation_Extended (0.00s)
+    --- PASS: TestKubernetesService_SecurityValidation_Extended/ClusterRole_validation_covers_security_considerations (0.00s)
+=== RUN   TestNewKubernetesServiceWithFactory
+=== RUN   TestNewKubernetesServiceWithFactory/Successful_service_creation_with_test_factory
+=== RUN   TestNewKubernetesServiceWithFactory/Factory_config_creation_fails
+=== RUN   TestNewKubernetesServiceWithFactory/Factory_clientset_creation_fails
+=== RUN   TestNewKubernetesServiceWithFactory/Service_created_with_custom_fake_client
+=== RUN   TestNewKubernetesServiceWithFactory/Service_configuration_validation
+--- PASS: TestNewKubernetesServiceWithFactory (0.00s)
+    --- PASS: TestNewKubernetesServiceWithFactory/Successful_service_creation_with_test_factory (0.00s)
+    --- PASS: TestNewKubernetesServiceWithFactory/Factory_config_creation_fails (0.00s)
+    --- PASS: TestNewKubernetesServiceWithFactory/Factory_clientset_creation_fails (0.00s)
+    --- PASS: TestNewKubernetesServiceWithFactory/Service_created_with_custom_fake_client (0.00s)
+    --- PASS: TestNewKubernetesServiceWithFactory/Service_configuration_validation (0.00s)
+=== RUN   TestKubernetesServiceWithFakeClient_Operations
+=== RUN   TestKubernetesServiceWithFakeClient_Operations/Real_operations_with_fake_client
+=== RUN   TestKubernetesServiceWithFakeClient_Operations/Namespace_metadata_operations
+=== RUN   TestKubernetesServiceWithFakeClient_Operations/Impersonation_operations
+    kubernetes_test.go:549: ClusterRole validation: exists=false
+    kubernetes_test.go:557: Generated service account name: ''
+    kubernetes_test.go:563: Using fallback service account name: test-service-account
+--- PASS: TestKubernetesServiceWithFakeClient_Operations (0.00s)
+    --- PASS: TestKubernetesServiceWithFakeClient_Operations/Real_operations_with_fake_client (0.00s)
+    --- PASS: TestKubernetesServiceWithFakeClient_Operations/Namespace_metadata_operations (0.00s)
+    --- PASS: TestKubernetesServiceWithFakeClient_Operations/Impersonation_operations (0.00s)
+=== RUN   TestKubernetesService_UntestedOperations_WithFakeClient
+=== RUN   TestKubernetesService_UntestedOperations_WithFakeClient/DeleteNamespace_operations
+=== RUN   TestKubernetesService_UntestedOperations_WithFakeClient/ClusterRole_validation_comprehensive
+=== RUN   TestKubernetesService_UntestedOperations_WithFakeClient/ClusterRole_validation_comprehensive/Standard_role
+    kubernetes_test.go:618: Role 'test-role' validation: exists=false, warnings=0
+=== RUN   TestKubernetesService_UntestedOperations_WithFakeClient/ClusterRole_validation_comprehensive/Admin_role
+    kubernetes_test.go:618: Role 'cluster-admin' validation: exists=false, warnings=0
+=== RUN   TestKubernetesService_UntestedOperations_WithFakeClient/ClusterRole_validation_comprehensive/Empty_role
+    kubernetes_test.go:618: Role '' validation: exists=false, warnings=0
+=== RUN   TestKubernetesService_UntestedOperations_WithFakeClient/ClusterRole_validation_comprehensive/Non-existent_role
+    kubernetes_test.go:618: Role 'non-existent-role' validation: exists=false, warnings=0
+=== RUN   TestKubernetesService_UntestedOperations_WithFakeClient/Comprehensive_service_operations
+=== RUN   TestKubernetesService_UntestedOperations_WithFakeClient/Service_account_operations_comprehensive
+    kubernetes_test.go:686: Generated service account name: ''
+=== RUN   TestKubernetesService_UntestedOperations_WithFakeClient/Error_handling_paths
+--- PASS: TestKubernetesService_UntestedOperations_WithFakeClient (0.00s)
+    --- PASS: TestKubernetesService_UntestedOperations_WithFakeClient/DeleteNamespace_operations (0.00s)
+    --- PASS: TestKubernetesService_UntestedOperations_WithFakeClient/ClusterRole_validation_comprehensive (0.00s)
+        --- PASS: TestKubernetesService_UntestedOperations_WithFakeClient/ClusterRole_validation_comprehensive/Standard_role (0.00s)
+        --- PASS: TestKubernetesService_UntestedOperations_WithFakeClient/ClusterRole_validation_comprehensive/Admin_role (0.00s)
+        --- PASS: TestKubernetesService_UntestedOperations_WithFakeClient/ClusterRole_validation_comprehensive/Empty_role (0.00s)
+        --- PASS: TestKubernetesService_UntestedOperations_WithFakeClient/ClusterRole_validation_comprehensive/Non-existent_role (0.00s)
+    --- PASS: TestKubernetesService_UntestedOperations_WithFakeClient/Comprehensive_service_operations (0.00s)
+    --- PASS: TestKubernetesService_UntestedOperations_WithFakeClient/Service_account_operations_comprehensive (0.00s)
+    --- PASS: TestKubernetesService_UntestedOperations_WithFakeClient/Error_handling_paths (0.00s)
+=== RUN   TestKubernetesService_ValidationMethods_Coverage
+=== RUN   TestKubernetesService_ValidationMethods_Coverage/ClusterRole_validation_methods_coverage
+    kubernetes_test.go:736: Role: cluster-admin, Exists: false, HasClusterAdmin: false, HasNamespaceSpanning: false, Warnings: 0
+    kubernetes_test.go:736: Role: view, Exists: false, HasClusterAdmin: false, HasNamespaceSpanning: false, Warnings: 0
+    kubernetes_test.go:736: Role: edit, Exists: false, HasClusterAdmin: false, HasNamespaceSpanning: false, Warnings: 0
+    kubernetes_test.go:736: Role: system:node, Exists: false, HasClusterAdmin: false, HasNamespaceSpanning: false, Warnings: 0
+    kubernetes_test.go:736: Role: custom-role, Exists: false, HasClusterAdmin: false, HasNamespaceSpanning: false, Warnings: 0
+=== RUN   TestKubernetesService_ValidationMethods_Coverage/App_project_conflict_checking
+--- PASS: TestKubernetesService_ValidationMethods_Coverage (0.00s)
+    --- PASS: TestKubernetesService_ValidationMethods_Coverage/ClusterRole_validation_methods_coverage (0.00s)
+    --- PASS: TestKubernetesService_ValidationMethods_Coverage/App_project_conflict_checking (0.00s)
+=== RUN   TestKubernetesService_EdgeCases_Coverage
+=== RUN   TestKubernetesService_EdgeCases_Coverage/Operations_with_edge_case_inputs
+=== RUN   TestKubernetesService_EdgeCases_Coverage/Service_with_nil_logger
+--- PASS: TestKubernetesService_EdgeCases_Coverage (0.00s)
+    --- PASS: TestKubernetesService_EdgeCases_Coverage/Operations_with_edge_case_inputs (0.00s)
+    --- PASS: TestKubernetesService_EdgeCases_Coverage/Service_with_nil_logger (0.00s)
+=== RUN   TestKubernetesService_ClusterRoleValidation_PrivateMethods
+=== RUN   TestKubernetesService_ClusterRoleValidation_PrivateMethods/Private_validation_methods_with_real_cluster_roles
+=== RUN   TestKubernetesService_ClusterRoleValidation_PrivateMethods/Private_validation_methods_with_real_cluster_roles/cluster-admin-test
+    kubernetes_test.go:911: Should trigger checkClusterAdminPermissions: Role 'cluster-admin-test' - ClusterAdmin=true, NamespaceSpanning=true, ClusterScoped=true, warnings=3
+=== RUN   TestKubernetesService_ClusterRoleValidation_PrivateMethods/Private_validation_methods_with_real_cluster_roles/namespace-spanning-test
+    kubernetes_test.go:911: Should trigger checkNamespaceSpanningPermissions: Role 'namespace-spanning-test' - ClusterAdmin=false, NamespaceSpanning=true, ClusterScoped=false, warnings=1
+=== RUN   TestKubernetesService_ClusterRoleValidation_PrivateMethods/Private_validation_methods_with_real_cluster_roles/cluster-scoped-test
+    kubernetes_test.go:911: Should trigger checkClusterScopedPermissions: Role 'cluster-scoped-test' - ClusterAdmin=false, NamespaceSpanning=false, ClusterScoped=true, warnings=2
+=== RUN   TestKubernetesService_ClusterRoleValidation_PrivateMethods/Private_validation_methods_with_real_cluster_roles/combined-permissions-test
+    kubernetes_test.go:911: Should trigger all validation methods: Role 'combined-permissions-test' - ClusterAdmin=true, NamespaceSpanning=true, ClusterScoped=true, warnings=5
+=== RUN   TestKubernetesService_ClusterRoleValidation_PrivateMethods/Edge_cases_with_different_rule_patterns
+=== RUN   TestKubernetesService_ClusterRoleValidation_PrivateMethods/Edge_cases_with_different_rule_patterns/wildcard-resources-only
+    kubernetes_test.go:1005: Edge case 'wildcard-resources-only': validation completed successfully
+=== RUN   TestKubernetesService_ClusterRoleValidation_PrivateMethods/Edge_cases_with_different_rule_patterns/wildcard-verbs-only
+    kubernetes_test.go:1005: Edge case 'wildcard-verbs-only': validation completed successfully
+=== RUN   TestKubernetesService_ClusterRoleValidation_PrivateMethods/Edge_cases_with_different_rule_patterns/specific-namespace-resources
+    kubernetes_test.go:1005: Edge case 'specific-namespace-resources': validation completed successfully
+=== RUN   TestKubernetesService_ClusterRoleValidation_PrivateMethods/Edge_cases_with_different_rule_patterns/cluster-resources-modify
+    kubernetes_test.go:1005: Edge case 'cluster-resources-modify': validation completed successfully
+=== RUN   TestKubernetesService_ClusterRoleValidation_PrivateMethods/Edge_cases_with_different_rule_patterns/no-dangerous-permissions
+    kubernetes_test.go:1005: Edge case 'no-dangerous-permissions': validation completed successfully
+--- PASS: TestKubernetesService_ClusterRoleValidation_PrivateMethods (0.00s)
+    --- PASS: TestKubernetesService_ClusterRoleValidation_PrivateMethods/Private_validation_methods_with_real_cluster_roles (0.00s)
+        --- PASS: TestKubernetesService_ClusterRoleValidation_PrivateMethods/Private_validation_methods_with_real_cluster_roles/cluster-admin-test (0.00s)
+        --- PASS: TestKubernetesService_ClusterRoleValidation_PrivateMethods/Private_validation_methods_with_real_cluster_roles/namespace-spanning-test (0.00s)
+        --- PASS: TestKubernetesService_ClusterRoleValidation_PrivateMethods/Private_validation_methods_with_real_cluster_roles/cluster-scoped-test (0.00s)
+        --- PASS: TestKubernetesService_ClusterRoleValidation_PrivateMethods/Private_validation_methods_with_real_cluster_roles/combined-permissions-test (0.00s)
+    --- PASS: TestKubernetesService_ClusterRoleValidation_PrivateMethods/Edge_cases_with_different_rule_patterns (0.00s)
+        --- PASS: TestKubernetesService_ClusterRoleValidation_PrivateMethods/Edge_cases_with_different_rule_patterns/wildcard-resources-only (0.00s)
+        --- PASS: TestKubernetesService_ClusterRoleValidation_PrivateMethods/Edge_cases_with_different_rule_patterns/wildcard-verbs-only (0.00s)
+        --- PASS: TestKubernetesService_ClusterRoleValidation_PrivateMethods/Edge_cases_with_different_rule_patterns/specific-namespace-resources (0.00s)
+        --- PASS: TestKubernetesService_ClusterRoleValidation_PrivateMethods/Edge_cases_with_different_rule_patterns/cluster-resources-modify (0.00s)
+        --- PASS: TestKubernetesService_ClusterRoleValidation_PrivateMethods/Edge_cases_with_different_rule_patterns/no-dangerous-permissions (0.00s)
+=== RUN   TestKubernetesService_ServiceAccountAndRoleBinding_Coverage
+=== RUN   TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateServiceAccount_comprehensive
+=== RUN   TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateServiceAccount_comprehensive/standard_service_account
+=== RUN   TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateServiceAccount_comprehensive/service_account_with_dashes
+=== RUN   TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateServiceAccount_comprehensive/service_account_with_numbers
+=== RUN   TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateServiceAccount_comprehensive/long_service_account_name
+=== RUN   TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateServiceAccount_comprehensive/empty_namespace
+=== RUN   TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateServiceAccount_comprehensive/empty_service_account_name
+=== RUN   TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateRoleBinding_comprehensive
+=== RUN   TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateRoleBinding_comprehensive/gitops_role_binding
+=== RUN   TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateRoleBinding_comprehensive/admin_role_binding
+=== RUN   TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateRoleBinding_comprehensive/view_role_binding
+=== RUN   TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateRoleBinding_comprehensive/edit_role_binding
+=== RUN   TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateRoleBinding_comprehensive/empty_namespace
+=== RUN   TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateRoleBinding_comprehensive/empty_binding_name
+=== RUN   TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateRoleBinding_comprehensive/empty_role_name
+=== RUN   TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateRoleBinding_comprehensive/empty_service_account
+=== RUN   TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/Combined_service_account_and_role_binding_workflow
+=== RUN   TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/Combined_service_account_and_role_binding_workflow/gitops_workflow
+=== RUN   TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/Combined_service_account_and_role_binding_workflow/deployment_workflow
+--- PASS: TestKubernetesService_ServiceAccountAndRoleBinding_Coverage (0.00s)
+    --- PASS: TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateServiceAccount_comprehensive (0.00s)
+        --- PASS: TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateServiceAccount_comprehensive/standard_service_account (0.00s)
+        --- PASS: TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateServiceAccount_comprehensive/service_account_with_dashes (0.00s)
+        --- PASS: TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateServiceAccount_comprehensive/service_account_with_numbers (0.00s)
+        --- PASS: TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateServiceAccount_comprehensive/long_service_account_name (0.00s)
+        --- PASS: TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateServiceAccount_comprehensive/empty_namespace (0.00s)
+        --- PASS: TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateServiceAccount_comprehensive/empty_service_account_name (0.00s)
+    --- PASS: TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateRoleBinding_comprehensive (0.00s)
+        --- PASS: TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateRoleBinding_comprehensive/gitops_role_binding (0.00s)
+        --- PASS: TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateRoleBinding_comprehensive/admin_role_binding (0.00s)
+        --- PASS: TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateRoleBinding_comprehensive/view_role_binding (0.00s)
+        --- PASS: TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateRoleBinding_comprehensive/edit_role_binding (0.00s)
+        --- PASS: TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateRoleBinding_comprehensive/empty_namespace (0.00s)
+        --- PASS: TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateRoleBinding_comprehensive/empty_binding_name (0.00s)
+        --- PASS: TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateRoleBinding_comprehensive/empty_role_name (0.00s)
+        --- PASS: TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/CreateRoleBinding_comprehensive/empty_service_account (0.00s)
+    --- PASS: TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/Combined_service_account_and_role_binding_workflow (0.00s)
+        --- PASS: TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/Combined_service_account_and_role_binding_workflow/gitops_workflow (0.00s)
+        --- PASS: TestKubernetesService_ServiceAccountAndRoleBinding_Coverage/Combined_service_account_and_role_binding_workflow/deployment_workflow (0.00s)
+=== RUN   TestKubernetesService_RemainingZeroCoverageOperations
+=== RUN   TestKubernetesService_RemainingZeroCoverageOperations/DeleteNamespace_comprehensive_testing
+=== RUN   TestKubernetesService_RemainingZeroCoverageOperations/DeleteNamespace_comprehensive_testing/Delete_namespace_test-namespace
+=== RUN   TestKubernetesService_RemainingZeroCoverageOperations/DeleteNamespace_comprehensive_testing/Delete_namespace_gitops-system
+=== RUN   TestKubernetesService_RemainingZeroCoverageOperations/DeleteNamespace_comprehensive_testing/Delete_namespace_development
+=== RUN   TestKubernetesService_RemainingZeroCoverageOperations/DeleteNamespace_comprehensive_testing/Delete_namespace_production
+=== RUN   TestKubernetesService_RemainingZeroCoverageOperations/DeleteNamespace_comprehensive_testing/Delete_namespace_very-long-namespace-name-for-testing-purposes
+=== RUN   TestKubernetesService_RemainingZeroCoverageOperations/DeleteNamespace_comprehensive_testing/Delete_empty_namespace_name
+=== RUN   TestKubernetesService_RemainingZeroCoverageOperations/DeleteNamespace_comprehensive_testing/Delete_non-existent_namespace
+=== RUN   TestKubernetesService_RemainingZeroCoverageOperations/Validation_methods_comprehensive_coverage
+=== RUN   TestKubernetesService_RemainingZeroCoverageOperations/Validation_methods_comprehensive_coverage/system_role
+    kubernetes_test.go:1301: Role 'system:admin': exists=false, admin=false, spanning=false, scoped=false
+=== RUN   TestKubernetesService_RemainingZeroCoverageOperations/Validation_methods_comprehensive_coverage/cluster_role
+    kubernetes_test.go:1301: Role 'cluster-admin': exists=false, admin=false, spanning=false, scoped=false
+=== RUN   TestKubernetesService_RemainingZeroCoverageOperations/Validation_methods_comprehensive_coverage/custom_role
+    kubernetes_test.go:1301: Role 'custom-role-name': exists=false, admin=false, spanning=false, scoped=false
+=== RUN   TestKubernetesService_RemainingZeroCoverageOperations/Validation_methods_comprehensive_coverage/hyphenated_role
+    kubernetes_test.go:1301: Role 'my-custom-role': exists=false, admin=false, spanning=false, scoped=false
+=== RUN   TestKubernetesService_RemainingZeroCoverageOperations/Validation_methods_comprehensive_coverage/numbered_role
+    kubernetes_test.go:1301: Role 'role-123': exists=false, admin=false, spanning=false, scoped=false
+=== RUN   TestKubernetesService_RemainingZeroCoverageOperations/Validation_methods_comprehensive_coverage/very_long_role_name
+    kubernetes_test.go:1301: Role 'very-long-cluster-role-name-for-comprehensive-testing': exists=false, admin=false, spanning=false, scoped=false
+=== RUN   TestKubernetesService_RemainingZeroCoverageOperations/Service_account_operations_edge_cases
+=== RUN   TestKubernetesService_RemainingZeroCoverageOperations/Service_account_operations_edge_cases/standard_prefix
+    kubernetes_test.go:1347: Generated service account name is empty (acceptable with fake client)
+=== RUN   TestKubernetesService_RemainingZeroCoverageOperations/Service_account_operations_edge_cases/long_prefix
+    kubernetes_test.go:1347: Generated service account name is empty (acceptable with fake client)
+=== RUN   TestKubernetesService_RemainingZeroCoverageOperations/Service_account_operations_edge_cases/short_prefix
+    kubernetes_test.go:1347: Generated service account name is empty (acceptable with fake client)
+=== RUN   TestKubernetesService_RemainingZeroCoverageOperations/Service_account_operations_edge_cases/admin_binding
+=== RUN   TestKubernetesService_RemainingZeroCoverageOperations/Service_account_operations_edge_cases/view_binding
+=== RUN   TestKubernetesService_RemainingZeroCoverageOperations/Namespace_operations_comprehensive
+=== RUN   TestKubernetesService_RemainingZeroCoverageOperations/Namespace_operations_comprehensive/Check_namespace_existing-namespace
+    kubernetes_test.go:1403: Namespace 'existing-namespace' exists: false
+=== RUN   TestKubernetesService_RemainingZeroCoverageOperations/Namespace_operations_comprehensive/Check_namespace_non-existing-namespace
+    kubernetes_test.go:1403: Namespace 'non-existing-namespace' exists: false
+=== RUN   TestKubernetesService_RemainingZeroCoverageOperations/Namespace_operations_comprehensive/Check_namespace_test-namespace-123
+    kubernetes_test.go:1403: Namespace 'test-namespace-123' exists: false
+=== NAME  TestKubernetesService_RemainingZeroCoverageOperations/Namespace_operations_comprehensive
+    kubernetes_test.go:1411: Total namespace count: 0
+--- PASS: TestKubernetesService_RemainingZeroCoverageOperations (0.00s)
+    --- PASS: TestKubernetesService_RemainingZeroCoverageOperations/DeleteNamespace_comprehensive_testing (0.00s)
+        --- PASS: TestKubernetesService_RemainingZeroCoverageOperations/DeleteNamespace_comprehensive_testing/Delete_namespace_test-namespace (0.00s)
+        --- PASS: TestKubernetesService_RemainingZeroCoverageOperations/DeleteNamespace_comprehensive_testing/Delete_namespace_gitops-system (0.00s)
+        --- PASS: TestKubernetesService_RemainingZeroCoverageOperations/DeleteNamespace_comprehensive_testing/Delete_namespace_development (0.00s)
+        --- PASS: TestKubernetesService_RemainingZeroCoverageOperations/DeleteNamespace_comprehensive_testing/Delete_namespace_production (0.00s)
+        --- PASS: TestKubernetesService_RemainingZeroCoverageOperations/DeleteNamespace_comprehensive_testing/Delete_namespace_very-long-namespace-name-for-testing-purposes (0.00s)
+        --- PASS: TestKubernetesService_RemainingZeroCoverageOperations/DeleteNamespace_comprehensive_testing/Delete_empty_namespace_name (0.00s)
+        --- PASS: TestKubernetesService_RemainingZeroCoverageOperations/DeleteNamespace_comprehensive_testing/Delete_non-existent_namespace (0.00s)
+    --- PASS: TestKubernetesService_RemainingZeroCoverageOperations/Validation_methods_comprehensive_coverage (0.00s)
+        --- PASS: TestKubernetesService_RemainingZeroCoverageOperations/Validation_methods_comprehensive_coverage/system_role (0.00s)
+        --- PASS: TestKubernetesService_RemainingZeroCoverageOperations/Validation_methods_comprehensive_coverage/cluster_role (0.00s)
+        --- PASS: TestKubernetesService_RemainingZeroCoverageOperations/Validation_methods_comprehensive_coverage/custom_role (0.00s)
+        --- PASS: TestKubernetesService_RemainingZeroCoverageOperations/Validation_methods_comprehensive_coverage/hyphenated_role (0.00s)
+        --- PASS: TestKubernetesService_RemainingZeroCoverageOperations/Validation_methods_comprehensive_coverage/numbered_role (0.00s)
+        --- PASS: TestKubernetesService_RemainingZeroCoverageOperations/Validation_methods_comprehensive_coverage/very_long_role_name (0.00s)
+    --- PASS: TestKubernetesService_RemainingZeroCoverageOperations/Service_account_operations_edge_cases (0.00s)
+        --- PASS: TestKubernetesService_RemainingZeroCoverageOperations/Service_account_operations_edge_cases/standard_prefix (0.00s)
+        --- PASS: TestKubernetesService_RemainingZeroCoverageOperations/Service_account_operations_edge_cases/long_prefix (0.00s)
+        --- PASS: TestKubernetesService_RemainingZeroCoverageOperations/Service_account_operations_edge_cases/short_prefix (0.00s)
+        --- PASS: TestKubernetesService_RemainingZeroCoverageOperations/Service_account_operations_edge_cases/admin_binding (0.00s)
+        --- PASS: TestKubernetesService_RemainingZeroCoverageOperations/Service_account_operations_edge_cases/view_binding (0.00s)
+    --- PASS: TestKubernetesService_RemainingZeroCoverageOperations/Namespace_operations_comprehensive (0.00s)
+        --- PASS: TestKubernetesService_RemainingZeroCoverageOperations/Namespace_operations_comprehensive/Check_namespace_existing-namespace (0.00s)
+        --- PASS: TestKubernetesService_RemainingZeroCoverageOperations/Namespace_operations_comprehensive/Check_namespace_non-existing-namespace (0.00s)
+        --- PASS: TestKubernetesService_RemainingZeroCoverageOperations/Namespace_operations_comprehensive/Check_namespace_test-namespace-123 (0.00s)
+=== RUN   TestRegistrationService_CheckRepositoryConflicts
+=== RUN   TestRegistrationService_CheckRepositoryConflicts/No_conflicts_with_impersonation_disabled
+=== RUN   TestRegistrationService_CheckRepositoryConflicts/No_conflicts_with_impersonation_enabled
+    registration_test.go:225: PASS:	CheckAppProjectConflict(context.backgroundCtx,mock.AnythingOfTypeArgument)
+=== RUN   TestRegistrationService_CheckRepositoryConflicts/Repository_conflict_exists
+    registration_test.go:225: PASS:	CheckAppProjectConflict(context.backgroundCtx,mock.AnythingOfTypeArgument)
+=== RUN   TestRegistrationService_CheckRepositoryConflicts/Error_checking_conflicts
+    registration_test.go:225: PASS:	CheckAppProjectConflict(context.backgroundCtx,mock.AnythingOfTypeArgument)
+--- PASS: TestRegistrationService_CheckRepositoryConflicts (0.00s)
+    --- PASS: TestRegistrationService_CheckRepositoryConflicts/No_conflicts_with_impersonation_disabled (0.00s)
+    --- PASS: TestRegistrationService_CheckRepositoryConflicts/No_conflicts_with_impersonation_enabled (0.00s)
+    --- PASS: TestRegistrationService_CheckRepositoryConflicts/Repository_conflict_exists (0.00s)
+    --- PASS: TestRegistrationService_CheckRepositoryConflicts/Error_checking_conflicts (0.00s)
+=== RUN   TestRegistrationService_ValidateNamespaceAvailability
+=== RUN   TestRegistrationService_ValidateNamespaceAvailability/Namespace_available
+    registration_test.go:281: PASS:	NamespaceExists(context.backgroundCtx,string)
+=== RUN   TestRegistrationService_ValidateNamespaceAvailability/Namespace_already_exists
+    registration_test.go:281: PASS:	NamespaceExists(context.backgroundCtx,string)
+=== RUN   TestRegistrationService_ValidateNamespaceAvailability/Error_checking_namespace
+    registration_test.go:281: PASS:	NamespaceExists(context.backgroundCtx,string)
+--- PASS: TestRegistrationService_ValidateNamespaceAvailability (0.00s)
+    --- PASS: TestRegistrationService_ValidateNamespaceAvailability/Namespace_available (0.00s)
+    --- PASS: TestRegistrationService_ValidateNamespaceAvailability/Namespace_already_exists (0.00s)
+    --- PASS: TestRegistrationService_ValidateNamespaceAvailability/Error_checking_namespace (0.00s)
+=== RUN   TestRegistrationService_BuildRegistrationRecord
+--- PASS: TestRegistrationService_BuildRegistrationRecord (0.00s)
+=== RUN   TestRegistrationService_SetupNamespace
+=== RUN   TestRegistrationService_SetupNamespace/Successful_namespace_setup
+    registration_test.go:363: PASS:	CreateNamespaceWithMetadata(context.backgroundCtx,string,mock.AnythingOfTypeArgument,mock.AnythingOfTypeArgument)
+=== RUN   TestRegistrationService_SetupNamespace/Error_creating_namespace
+    registration_test.go:363: PASS:	CreateNamespaceWithMetadata(context.backgroundCtx,string,mock.AnythingOfTypeArgument,mock.AnythingOfTypeArgument)
+--- PASS: TestRegistrationService_SetupNamespace (0.00s)
+    --- PASS: TestRegistrationService_SetupNamespace/Successful_namespace_setup (0.00s)
+    --- PASS: TestRegistrationService_SetupNamespace/Error_creating_namespace (0.00s)
+=== RUN   TestRegistrationService_SetupServiceAccount_Legacy
+=== RUN   TestRegistrationService_SetupServiceAccount_Legacy/Successful_legacy_service_account_setup
+    registration_test.go:419: PASS:	CreateServiceAccount(context.backgroundCtx,string,string)
+    registration_test.go:419: PASS:	CreateRoleBinding(context.backgroundCtx,string,string,string,string)
+=== RUN   TestRegistrationService_SetupServiceAccount_Legacy/Service_account_creation_fails
+    registration_test.go:419: PASS:	CreateServiceAccount(context.backgroundCtx,string,string)
+=== RUN   TestRegistrationService_SetupServiceAccount_Legacy/Role_binding_creation_fails
+    registration_test.go:419: PASS:	CreateServiceAccount(context.backgroundCtx,string,string)
+    registration_test.go:419: PASS:	CreateRoleBinding(context.backgroundCtx,string,string,string,string)
+--- PASS: TestRegistrationService_SetupServiceAccount_Legacy (0.00s)
+    --- PASS: TestRegistrationService_SetupServiceAccount_Legacy/Successful_legacy_service_account_setup (0.00s)
+    --- PASS: TestRegistrationService_SetupServiceAccount_Legacy/Service_account_creation_fails (0.00s)
+    --- PASS: TestRegistrationService_SetupServiceAccount_Legacy/Role_binding_creation_fails (0.00s)
+=== RUN   TestRegistrationService_SetupServiceAccount_Impersonation
+=== RUN   TestRegistrationService_SetupServiceAccount_Impersonation/Successful_impersonation_service_account_setup
+    registration_test.go:479: PASS:	CreateServiceAccountWithGenerateName(context.backgroundCtx,string,string)
+    registration_test.go:479: PASS:	CreateRoleBindingForServiceAccount(context.backgroundCtx,string,string,string,string)
+=== RUN   TestRegistrationService_SetupServiceAccount_Impersonation/Service_account_generation_fails
+    registration_test.go:479: PASS:	CreateServiceAccountWithGenerateName(context.backgroundCtx,string,string)
+=== RUN   TestRegistrationService_SetupServiceAccount_Impersonation/Role_binding_creation_fails
+    registration_test.go:479: PASS:	CreateServiceAccountWithGenerateName(context.backgroundCtx,string,string)
+    registration_test.go:479: PASS:	CreateRoleBindingForServiceAccount(context.backgroundCtx,string,string,string,string)
+--- PASS: TestRegistrationService_SetupServiceAccount_Impersonation (0.00s)
+    --- PASS: TestRegistrationService_SetupServiceAccount_Impersonation/Successful_impersonation_service_account_setup (0.00s)
+    --- PASS: TestRegistrationService_SetupServiceAccount_Impersonation/Service_account_generation_fails (0.00s)
+    --- PASS: TestRegistrationService_SetupServiceAccount_Impersonation/Role_binding_creation_fails (0.00s)
+=== RUN   TestRegistrationService_SetupArgoCDResources
+=== RUN   TestRegistrationService_SetupArgoCDResources/Successful_ArgoCD_resource_setup
+    registration_test.go:543: PASS:	CreateAppProject(context.backgroundCtx,mock.AnythingOfTypeArgument)
+    registration_test.go:543: PASS:	CreateApplication(context.backgroundCtx,mock.AnythingOfTypeArgument)
+=== RUN   TestRegistrationService_SetupArgoCDResources/AppProject_creation_fails
+    registration_test.go:543: PASS:	CreateAppProject(context.backgroundCtx,mock.AnythingOfTypeArgument)
+=== RUN   TestRegistrationService_SetupArgoCDResources/Application_creation_fails
+    registration_test.go:543: PASS:	CreateAppProject(context.backgroundCtx,mock.AnythingOfTypeArgument)
+    registration_test.go:543: PASS:	CreateApplication(context.backgroundCtx,mock.AnythingOfTypeArgument)
+--- PASS: TestRegistrationService_SetupArgoCDResources (0.00s)
+    --- PASS: TestRegistrationService_SetupArgoCDResources/Successful_ArgoCD_resource_setup (0.00s)
+    --- PASS: TestRegistrationService_SetupArgoCDResources/AppProject_creation_fails (0.00s)
+    --- PASS: TestRegistrationService_SetupArgoCDResources/Application_creation_fails (0.00s)
+=== RUN   TestRegistrationService_FinalizeRegistration
+--- PASS: TestRegistrationService_FinalizeRegistration (0.00s)
+=== RUN   TestRegistrationService_ValidateRegistration
+=== RUN   TestRegistrationService_ValidateRegistration/Valid_request
+=== RUN   TestRegistrationService_ValidateRegistration/Invalid_request_-_missing_namespace
+=== RUN   TestRegistrationService_ValidateRegistration/Invalid_request_-_missing_repository_URL
+--- PASS: TestRegistrationService_ValidateRegistration (0.00s)
+    --- PASS: TestRegistrationService_ValidateRegistration/Valid_request (0.00s)
+    --- PASS: TestRegistrationService_ValidateRegistration/Invalid_request_-_missing_namespace (0.00s)
+    --- PASS: TestRegistrationService_ValidateRegistration/Invalid_request_-_missing_repository_URL (0.00s)
+=== RUN   TestRegistrationService_ValidateExistingNamespaceRequest
+=== RUN   TestRegistrationService_ValidateExistingNamespaceRequest/Valid_request
+=== RUN   TestRegistrationService_ValidateExistingNamespaceRequest/Invalid_request_-_missing_existing_namespace
+=== RUN   TestRegistrationService_ValidateExistingNamespaceRequest/Invalid_request_-_missing_repository_URL
+--- PASS: TestRegistrationService_ValidateExistingNamespaceRequest (0.00s)
+    --- PASS: TestRegistrationService_ValidateExistingNamespaceRequest/Valid_request (0.00s)
+    --- PASS: TestRegistrationService_ValidateExistingNamespaceRequest/Invalid_request_-_missing_existing_namespace (0.00s)
+    --- PASS: TestRegistrationService_ValidateExistingNamespaceRequest/Invalid_request_-_missing_repository_URL (0.00s)
+=== RUN   TestRegistrationService_BuildAppProject
+=== RUN   TestRegistrationService_BuildAppProject/AppProject_with_service-level_allowList
+=== RUN   TestRegistrationService_BuildAppProject/AppProject_with_service-level_denyList
+=== RUN   TestRegistrationService_BuildAppProject/AppProject_with_no_service-level_restrictions
+--- PASS: TestRegistrationService_BuildAppProject (0.00s)
+    --- PASS: TestRegistrationService_BuildAppProject/AppProject_with_service-level_allowList (0.00s)
+    --- PASS: TestRegistrationService_BuildAppProject/AppProject_with_service-level_denyList (0.00s)
+    --- PASS: TestRegistrationService_BuildAppProject/AppProject_with_no_service-level_restrictions (0.00s)
+=== RUN   TestRegistrationService_BuildAppProject_DestinationsEnforcement
+--- PASS: TestRegistrationService_BuildAppProject_DestinationsEnforcement (0.00s)
+=== RUN   TestRegistrationService_ImpersonationEnabled
+=== RUN   TestRegistrationService_ImpersonationEnabled/Impersonation_enabled_with_service_account
+=== RUN   TestRegistrationService_ImpersonationEnabled/Impersonation_disabled
+--- PASS: TestRegistrationService_ImpersonationEnabled (0.00s)
+    --- PASS: TestRegistrationService_ImpersonationEnabled/Impersonation_enabled_with_service_account (0.00s)
+    --- PASS: TestRegistrationService_ImpersonationEnabled/Impersonation_disabled (0.00s)
+=== RUN   TestRegistrationService_RepositoryConflictDetection
+--- PASS: TestRegistrationService_RepositoryConflictDetection (0.00s)
+=== RUN   TestGenerateRepositoryHash
+=== RUN   TestGenerateRepositoryHash/GitHub_repository
+=== RUN   TestGenerateRepositoryHash/GitLab_repository
+=== RUN   TestGenerateRepositoryHash/Same_URL_should_produce_same_hash
+--- PASS: TestGenerateRepositoryHash (0.00s)
+    --- PASS: TestGenerateRepositoryHash/GitHub_repository (0.00s)
+    --- PASS: TestGenerateRepositoryHash/GitLab_repository (0.00s)
+    --- PASS: TestGenerateRepositoryHash/Same_URL_should_produce_same_hash (0.00s)
+=== RUN   TestClusterRoleValidation_SecurityWarnings
+--- PASS: TestClusterRoleValidation_SecurityWarnings (0.00s)
+=== RUN   TestRegistrationService_CheckRepositoryConflicts_Real
+=== RUN   TestRegistrationService_CheckRepositoryConflicts_Real/No_conflicts_with_impersonation_disabled
+=== RUN   TestRegistrationService_CheckRepositoryConflicts_Real/No_conflicts_with_impersonation_enabled
+    registration_test.go:1052: PASS:	CheckAppProjectConflict(context.backgroundCtx,mock.AnythingOfTypeArgument)
+=== RUN   TestRegistrationService_CheckRepositoryConflicts_Real/Repository_conflict_exists
+    registration_test.go:1052: PASS:	CheckAppProjectConflict(context.backgroundCtx,mock.AnythingOfTypeArgument)
+=== RUN   TestRegistrationService_CheckRepositoryConflicts_Real/Error_checking_conflicts
+    registration_test.go:1052: PASS:	CheckAppProjectConflict(context.backgroundCtx,mock.AnythingOfTypeArgument)
+--- PASS: TestRegistrationService_CheckRepositoryConflicts_Real (0.00s)
+    --- PASS: TestRegistrationService_CheckRepositoryConflicts_Real/No_conflicts_with_impersonation_disabled (0.00s)
+    --- PASS: TestRegistrationService_CheckRepositoryConflicts_Real/No_conflicts_with_impersonation_enabled (0.00s)
+    --- PASS: TestRegistrationService_CheckRepositoryConflicts_Real/Repository_conflict_exists (0.00s)
+    --- PASS: TestRegistrationService_CheckRepositoryConflicts_Real/Error_checking_conflicts (0.00s)
+=== RUN   TestRegistrationService_ValidateNamespaceAvailability_Real
+=== RUN   TestRegistrationService_ValidateNamespaceAvailability_Real/Namespace_available
+    registration_test.go:1108: PASS:	NamespaceExists(context.backgroundCtx,string)
+=== RUN   TestRegistrationService_ValidateNamespaceAvailability_Real/Namespace_already_exists
+    registration_test.go:1108: PASS:	NamespaceExists(context.backgroundCtx,string)
+=== RUN   TestRegistrationService_ValidateNamespaceAvailability_Real/Error_checking_namespace
+    registration_test.go:1108: PASS:	NamespaceExists(context.backgroundCtx,string)
+--- PASS: TestRegistrationService_ValidateNamespaceAvailability_Real (0.00s)
+    --- PASS: TestRegistrationService_ValidateNamespaceAvailability_Real/Namespace_available (0.00s)
+    --- PASS: TestRegistrationService_ValidateNamespaceAvailability_Real/Namespace_already_exists (0.00s)
+    --- PASS: TestRegistrationService_ValidateNamespaceAvailability_Real/Error_checking_namespace (0.00s)
+=== RUN   TestRegistrationService_BuildRegistrationRecord_Real
+--- PASS: TestRegistrationService_BuildRegistrationRecord_Real (0.00s)
+=== RUN   TestRegistrationService_SetupNamespace_Real
+=== RUN   TestRegistrationService_SetupNamespace_Real/Successful_namespace_setup
+    registration_test.go:1190: PASS:	CreateNamespaceWithMetadata(context.backgroundCtx,string,mock.AnythingOfTypeArgument,mock.AnythingOfTypeArgument)
+=== RUN   TestRegistrationService_SetupNamespace_Real/Error_creating_namespace
+    registration_test.go:1190: PASS:	CreateNamespaceWithMetadata(context.backgroundCtx,string,mock.AnythingOfTypeArgument,mock.AnythingOfTypeArgument)
+--- PASS: TestRegistrationService_SetupNamespace_Real (0.00s)
+    --- PASS: TestRegistrationService_SetupNamespace_Real/Successful_namespace_setup (0.00s)
+    --- PASS: TestRegistrationService_SetupNamespace_Real/Error_creating_namespace (0.00s)
+=== RUN   TestRegistrationService_SetupServiceAccount_Legacy_Real
+=== RUN   TestRegistrationService_SetupServiceAccount_Legacy_Real/Successful_legacy_service_account_setup
+    registration_test.go:1246: PASS:	CreateServiceAccount(context.backgroundCtx,string,string)
+    registration_test.go:1246: PASS:	CreateRoleBinding(context.backgroundCtx,string,string,string,string)
+=== RUN   TestRegistrationService_SetupServiceAccount_Legacy_Real/Service_account_creation_fails
+    registration_test.go:1246: PASS:	CreateServiceAccount(context.backgroundCtx,string,string)
+=== RUN   TestRegistrationService_SetupServiceAccount_Legacy_Real/Role_binding_creation_fails
+    registration_test.go:1246: PASS:	CreateServiceAccount(context.backgroundCtx,string,string)
+    registration_test.go:1246: PASS:	CreateRoleBinding(context.backgroundCtx,string,string,string,string)
+--- PASS: TestRegistrationService_SetupServiceAccount_Legacy_Real (0.00s)
+    --- PASS: TestRegistrationService_SetupServiceAccount_Legacy_Real/Successful_legacy_service_account_setup (0.00s)
+    --- PASS: TestRegistrationService_SetupServiceAccount_Legacy_Real/Service_account_creation_fails (0.00s)
+    --- PASS: TestRegistrationService_SetupServiceAccount_Legacy_Real/Role_binding_creation_fails (0.00s)
+=== RUN   TestRegistrationService_SetupServiceAccount_Impersonation_Real
+=== RUN   TestRegistrationService_SetupServiceAccount_Impersonation_Real/Successful_impersonation_service_account_setup
+    registration_test.go:1306: PASS:	CreateServiceAccountWithGenerateName(context.backgroundCtx,string,string)
+    registration_test.go:1306: PASS:	CreateRoleBindingForServiceAccount(context.backgroundCtx,string,string,string,string)
+=== RUN   TestRegistrationService_SetupServiceAccount_Impersonation_Real/Service_account_generation_fails
+    registration_test.go:1306: PASS:	CreateServiceAccountWithGenerateName(context.backgroundCtx,string,string)
+=== RUN   TestRegistrationService_SetupServiceAccount_Impersonation_Real/Role_binding_creation_fails
+    registration_test.go:1306: PASS:	CreateServiceAccountWithGenerateName(context.backgroundCtx,string,string)
+    registration_test.go:1306: PASS:	CreateRoleBindingForServiceAccount(context.backgroundCtx,string,string,string,string)
+--- PASS: TestRegistrationService_SetupServiceAccount_Impersonation_Real (0.00s)
+    --- PASS: TestRegistrationService_SetupServiceAccount_Impersonation_Real/Successful_impersonation_service_account_setup (0.00s)
+    --- PASS: TestRegistrationService_SetupServiceAccount_Impersonation_Real/Service_account_generation_fails (0.00s)
+    --- PASS: TestRegistrationService_SetupServiceAccount_Impersonation_Real/Role_binding_creation_fails (0.00s)
+=== RUN   TestRegistrationService_SetupArgoCDResources_Real
+=== RUN   TestRegistrationService_SetupArgoCDResources_Real/Successful_ArgoCD_resource_setup
+    registration_test.go:1370: PASS:	CreateAppProject(context.backgroundCtx,mock.AnythingOfTypeArgument)
+    registration_test.go:1370: PASS:	CreateApplication(context.backgroundCtx,mock.AnythingOfTypeArgument)
+=== RUN   TestRegistrationService_SetupArgoCDResources_Real/AppProject_creation_fails
+    registration_test.go:1370: PASS:	CreateAppProject(context.backgroundCtx,mock.AnythingOfTypeArgument)
+=== RUN   TestRegistrationService_SetupArgoCDResources_Real/Application_creation_fails
+    registration_test.go:1370: PASS:	CreateAppProject(context.backgroundCtx,mock.AnythingOfTypeArgument)
+    registration_test.go:1370: PASS:	CreateApplication(context.backgroundCtx,mock.AnythingOfTypeArgument)
+--- PASS: TestRegistrationService_SetupArgoCDResources_Real (0.00s)
+    --- PASS: TestRegistrationService_SetupArgoCDResources_Real/Successful_ArgoCD_resource_setup (0.00s)
+    --- PASS: TestRegistrationService_SetupArgoCDResources_Real/AppProject_creation_fails (0.00s)
+    --- PASS: TestRegistrationService_SetupArgoCDResources_Real/Application_creation_fails (0.00s)
+=== RUN   TestRegistrationService_FinalizeRegistration_Real
+--- PASS: TestRegistrationService_FinalizeRegistration_Real (0.00s)
+=== RUN   TestRegistrationService_CreateRegistration_NamespaceConflict_Real
+    registration_test.go:1424: PASS:	NamespaceExists(context.backgroundCtx,string)
+--- PASS: TestRegistrationService_CreateRegistration_NamespaceConflict_Real (0.00s)
+=== RUN   TestRegistrationService_CRUDOperations_WithFakeClients
+=== RUN   TestRegistrationService_CRUDOperations_WithFakeClients/GetRegistration_operations
+=== RUN   TestRegistrationService_CRUDOperations_WithFakeClients/ListRegistrations_operations
+=== RUN   TestRegistrationService_CRUDOperations_WithFakeClients/DeleteRegistration_operations
+=== RUN   TestRegistrationService_CRUDOperations_WithFakeClients/RegisterExistingNamespace_operations
+--- PASS: TestRegistrationService_CRUDOperations_WithFakeClients (0.00s)
+    --- PASS: TestRegistrationService_CRUDOperations_WithFakeClients/GetRegistration_operations (0.00s)
+    --- PASS: TestRegistrationService_CRUDOperations_WithFakeClients/ListRegistrations_operations (0.00s)
+    --- PASS: TestRegistrationService_CRUDOperations_WithFakeClients/DeleteRegistration_operations (0.00s)
+    --- PASS: TestRegistrationService_CRUDOperations_WithFakeClients/RegisterExistingNamespace_operations (0.00s)
+=== RUN   TestRegistrationService_ExistingNamespaceHelpers
+=== RUN   TestRegistrationService_ExistingNamespaceHelpers/validateExistingNamespace_operations
+=== RUN   TestRegistrationService_ExistingNamespaceHelpers/buildExistingNamespaceRegistration_operations
+--- PASS: TestRegistrationService_ExistingNamespaceHelpers (0.00s)
+    --- PASS: TestRegistrationService_ExistingNamespaceHelpers/validateExistingNamespace_operations (0.00s)
+    --- PASS: TestRegistrationService_ExistingNamespaceHelpers/buildExistingNamespaceRegistration_operations (0.00s)
+=== RUN   TestRegistrationService_EdgeCases_Coverage
+=== RUN   TestRegistrationService_EdgeCases_Coverage/Service_with_nil_dependencies
+=== RUN   TestRegistrationService_EdgeCases_Coverage/Service_with_minimal_configuration
+--- PASS: TestRegistrationService_EdgeCases_Coverage (0.00s)
+    --- PASS: TestRegistrationService_EdgeCases_Coverage/Service_with_nil_dependencies (0.00s)
+    --- PASS: TestRegistrationService_EdgeCases_Coverage/Service_with_minimal_configuration (0.00s)
+=== RUN   TestServices_Structure
+=== RUN   TestServices_Structure/Services_with_all_components
+=== RUN   TestServices_Structure/Services_with_missing_components
+--- PASS: TestServices_Structure (0.00s)
+    --- PASS: TestServices_Structure/Services_with_all_components (0.00s)
+    --- PASS: TestServices_Structure/Services_with_missing_components (0.00s)
+=== RUN   TestServices_New_ErrorHandling
+=== RUN   TestServices_New_ErrorHandling/New_without_Kubernetes_environment
+=== RUN   TestServices_New_ErrorHandling/New_with_nil_config
+=== RUN   TestServices_New_ErrorHandling/New_with_nil_logger
+--- PASS: TestServices_New_ErrorHandling (0.00s)
+    --- PASS: TestServices_New_ErrorHandling/New_without_Kubernetes_environment (0.00s)
+    --- PASS: TestServices_New_ErrorHandling/New_with_nil_config (0.00s)
+    --- PASS: TestServices_New_ErrorHandling/New_with_nil_logger (0.00s)
+=== RUN   TestErrorTypes_Structure
+=== RUN   TestErrorTypes_Structure/NamespaceConflictError
+--- PASS: TestErrorTypes_Structure (0.00s)
+    --- PASS: TestErrorTypes_Structure/NamespaceConflictError (0.00s)
+=== RUN   TestClusterRoleValidation_BusinessLogic
+=== RUN   TestClusterRoleValidation_BusinessLogic/Complete_validation_result
+=== RUN   TestClusterRoleValidation_BusinessLogic/High-risk_validation_result
+--- PASS: TestClusterRoleValidation_BusinessLogic (0.00s)
+    --- PASS: TestClusterRoleValidation_BusinessLogic/Complete_validation_result (0.00s)
+    --- PASS: TestClusterRoleValidation_BusinessLogic/High-risk_validation_result (0.00s)
+=== RUN   TestServiceTypes_Integration
+=== RUN   TestServiceTypes_Integration/Stub_services_implement_interfaces
+--- PASS: TestServiceTypes_Integration (0.00s)
+    --- PASS: TestServiceTypes_Integration/Stub_services_implement_interfaces (0.00s)
+=== RUN   TestApplicationTypes_Validation
+=== RUN   TestApplicationTypes_Validation/Complete_Application_structure
+--- PASS: TestApplicationTypes_Validation (0.00s)
+    --- PASS: TestApplicationTypes_Validation/Complete_Application_structure (0.00s)
+=== RUN   TestNewWithFactories_Comprehensive
+=== RUN   TestNewWithFactories_Comprehensive/Successful_creation_with_test_factories
+=== RUN   TestNewWithFactories_Comprehensive/Error_handling_scenarios
+=== RUN   TestNewWithFactories_Comprehensive/Various_configuration_scenarios
+=== RUN   TestNewWithFactories_Comprehensive/Various_configuration_scenarios/Config_variation_1
+=== RUN   TestNewWithFactories_Comprehensive/Various_configuration_scenarios/Config_variation_2
+=== RUN   TestNewWithFactories_Comprehensive/Various_configuration_scenarios/Config_variation_3
+--- PASS: TestNewWithFactories_Comprehensive (0.00s)
+    --- PASS: TestNewWithFactories_Comprehensive/Successful_creation_with_test_factories (0.00s)
+    --- PASS: TestNewWithFactories_Comprehensive/Error_handling_scenarios (0.00s)
+    --- PASS: TestNewWithFactories_Comprehensive/Various_configuration_scenarios (0.00s)
+        --- PASS: TestNewWithFactories_Comprehensive/Various_configuration_scenarios/Config_variation_1 (0.00s)
+        --- PASS: TestNewWithFactories_Comprehensive/Various_configuration_scenarios/Config_variation_2 (0.00s)
+        --- PASS: TestNewWithFactories_Comprehensive/Various_configuration_scenarios/Config_variation_3 (0.00s)
+=== RUN   TestKubernetesServiceStub_HealthCheck
+--- PASS: TestKubernetesServiceStub_HealthCheck (0.00s)
+=== RUN   TestKubernetesServiceStub_CreateNamespace
+--- PASS: TestKubernetesServiceStub_CreateNamespace (0.00s)
+=== RUN   TestKubernetesServiceStub_DeleteNamespace
+--- PASS: TestKubernetesServiceStub_DeleteNamespace (0.00s)
+=== RUN   TestKubernetesServiceStub_NamespaceExists
+--- PASS: TestKubernetesServiceStub_NamespaceExists (0.00s)
+=== RUN   TestKubernetesServiceStub_CountNamespaces
+--- PASS: TestKubernetesServiceStub_CountNamespaces (0.00s)
+=== RUN   TestArgoCDServiceStub_HealthCheck
+--- PASS: TestArgoCDServiceStub_HealthCheck (0.00s)
+=== RUN   TestArgoCDServiceStub_CreateAppProject
+--- PASS: TestArgoCDServiceStub_CreateAppProject (0.00s)
+=== RUN   TestArgoCDServiceStub_CreateApplication
+--- PASS: TestArgoCDServiceStub_CreateApplication (0.00s)
+=== RUN   TestArgoCDServiceStub_GetApplicationStatus
+--- PASS: TestArgoCDServiceStub_GetApplicationStatus (0.00s)
+=== RUN   TestAuthorizationServiceStub_ValidateNamespaceAccess
+2025/07/20 11:56:05 STUB: Validating access for user test-user to namespace test-namespace
+--- PASS: TestAuthorizationServiceStub_ValidateNamespaceAccess (0.00s)
+=== RUN   TestAuthorizationServiceStub_ExtractUserInfo
+--- PASS: TestAuthorizationServiceStub_ExtractUserInfo (0.00s)
+=== RUN   TestAuthorizationServiceStub_IsAdminUser
+--- PASS: TestAuthorizationServiceStub_IsAdminUser (0.00s)
+=== RUN   TestRegistrationServiceStub_CreateRegistration
+2025/07/20 11:56:05 STUB: Creating registration for namespace test-namespace
+--- PASS: TestRegistrationServiceStub_CreateRegistration (0.00s)
+=== RUN   TestRegistrationServiceStub_RegisterExistingNamespace
+2025/07/20 11:56:05 STUB: Registering existing namespace existing-namespace for user test-user
+--- PASS: TestRegistrationServiceStub_RegisterExistingNamespace (0.00s)
+=== RUN   TestRegistrationServiceStub_GetRegistration
+--- PASS: TestRegistrationServiceStub_GetRegistration (0.00s)
+=== RUN   TestRegistrationServiceStub_ListRegistrations
+2025/07/20 11:56:05 STUB: Listing registrations
+--- PASS: TestRegistrationServiceStub_ListRegistrations (0.00s)
+=== RUN   TestRegistrationServiceStub_DeleteRegistration
+--- PASS: TestRegistrationServiceStub_DeleteRegistration (0.00s)
+=== RUN   TestRegistrationControlServiceStub_IsNewNamespaceAllowed_Enabled
+--- PASS: TestRegistrationControlServiceStub_IsNewNamespaceAllowed_Enabled (0.00s)
+=== RUN   TestRegistrationControlServiceStub_IsNewNamespaceAllowed_Disabled
+--- PASS: TestRegistrationControlServiceStub_IsNewNamespaceAllowed_Disabled (0.00s)
+=== RUN   TestRegistrationControlServiceStub_GetRegistrationStatus_Enabled
+2025/07/20 11:56:05 STUB: Getting registration status
+--- PASS: TestRegistrationControlServiceStub_GetRegistrationStatus_Enabled (0.00s)
+=== RUN   TestRegistrationControlServiceStub_GetRegistrationStatus_Disabled
+2025/07/20 11:56:05 STUB: Getting registration status
+--- PASS: TestRegistrationControlServiceStub_GetRegistrationStatus_Disabled (0.00s)
+=== RUN   TestStubConstructors_Coverage
+=== RUN   TestStubConstructors_Coverage/NewKubernetesService_constructor
+=== RUN   TestStubConstructors_Coverage/NewArgoCDService_constructor
+=== RUN   TestStubConstructors_Coverage/NewAuthorizationService_constructor
+=== RUN   TestStubConstructors_Coverage/NewRegistrationControlService_constructor
+=== RUN   TestStubConstructors_Coverage/NewRegistrationService_constructor
+2025/07/20 11:56:05 STUB: Creating registration service
+--- PASS: TestStubConstructors_Coverage (0.00s)
+    --- PASS: TestStubConstructors_Coverage/NewKubernetesService_constructor (0.00s)
+    --- PASS: TestStubConstructors_Coverage/NewArgoCDService_constructor (0.00s)
+    --- PASS: TestStubConstructors_Coverage/NewAuthorizationService_constructor (0.00s)
+    --- PASS: TestStubConstructors_Coverage/NewRegistrationControlService_constructor (0.00s)
+    --- PASS: TestStubConstructors_Coverage/NewRegistrationService_constructor (0.00s)
+=== RUN   TestKubernetesServiceStub_UntestedMethods
+=== RUN   TestKubernetesServiceStub_UntestedMethods/CreateNamespaceWithMetadata
+2025/07/20 11:56:05 STUB: Creating namespace test-namespace with metadata
+=== RUN   TestKubernetesServiceStub_UntestedMethods/UpdateNamespaceLabels
+=== RUN   TestKubernetesServiceStub_UntestedMethods/UpdateNamespaceMetadata
+2025/07/20 11:56:05 STUB: Updating namespace test-namespace metadata
+=== RUN   TestKubernetesServiceStub_UntestedMethods/CreateServiceAccount
+=== RUN   TestKubernetesServiceStub_UntestedMethods/CreateRoleBinding
+=== RUN   TestKubernetesServiceStub_UntestedMethods/CreateServiceAccountWithGenerateName
+2025/07/20 11:56:05 STUB: Creating service account base-name-8953e1ae in namespace test-namespace
+=== RUN   TestKubernetesServiceStub_UntestedMethods/CreateRoleBindingForServiceAccount
+2025/07/20 11:56:05 STUB: Creating role binding test-binding for service account test-sa in namespace test-namespace
+=== RUN   TestKubernetesServiceStub_UntestedMethods/CheckAppProjectConflict
+--- PASS: TestKubernetesServiceStub_UntestedMethods (0.00s)
+    --- PASS: TestKubernetesServiceStub_UntestedMethods/CreateNamespaceWithMetadata (0.00s)
+    --- PASS: TestKubernetesServiceStub_UntestedMethods/UpdateNamespaceLabels (0.00s)
+    --- PASS: TestKubernetesServiceStub_UntestedMethods/UpdateNamespaceMetadata (0.00s)
+    --- PASS: TestKubernetesServiceStub_UntestedMethods/CreateServiceAccount (0.00s)
+    --- PASS: TestKubernetesServiceStub_UntestedMethods/CreateRoleBinding (0.00s)
+    --- PASS: TestKubernetesServiceStub_UntestedMethods/CreateServiceAccountWithGenerateName (0.00s)
+    --- PASS: TestKubernetesServiceStub_UntestedMethods/CreateRoleBindingForServiceAccount (0.00s)
+    --- PASS: TestKubernetesServiceStub_UntestedMethods/CheckAppProjectConflict (0.00s)
+=== RUN   TestArgoCDServiceStub_UntestedMethods
+=== RUN   TestArgoCDServiceStub_UntestedMethods/DeleteAppProject
+=== RUN   TestArgoCDServiceStub_UntestedMethods/DeleteApplication
+=== RUN   TestArgoCDServiceStub_UntestedMethods/convertResourceListToInterface
+=== RUN   TestArgoCDServiceStub_UntestedMethods/CheckAppProjectConflict
+--- PASS: TestArgoCDServiceStub_UntestedMethods (0.00s)
+    --- PASS: TestArgoCDServiceStub_UntestedMethods/DeleteAppProject (0.00s)
+    --- PASS: TestArgoCDServiceStub_UntestedMethods/DeleteApplication (0.00s)
+    --- PASS: TestArgoCDServiceStub_UntestedMethods/convertResourceListToInterface (0.00s)
+    --- PASS: TestArgoCDServiceStub_UntestedMethods/CheckAppProjectConflict (0.00s)
+=== RUN   TestRegistrationServiceStub_UntestedMethods
+2025/07/20 11:56:05 STUB: Creating registration service
+=== RUN   TestRegistrationServiceStub_UntestedMethods/ValidateRegistration
+=== RUN   TestRegistrationServiceStub_UntestedMethods/ValidateExistingNamespaceRequest
+2025/07/20 11:56:05 STUB: Validating existing namespace request for test-namespace
+--- PASS: TestRegistrationServiceStub_UntestedMethods (0.00s)
+    --- PASS: TestRegistrationServiceStub_UntestedMethods/ValidateRegistration (0.00s)
+    --- PASS: TestRegistrationServiceStub_UntestedMethods/ValidateExistingNamespaceRequest (0.00s)
+=== RUN   TestStubsUtilityFunctions_Coverage
+=== RUN   TestStubsUtilityFunctions_Coverage/Utility_functions_exist_and_work
+2025/07/20 11:56:05 STUB: Creating registration service
+--- PASS: TestStubsUtilityFunctions_Coverage (0.00s)
+    --- PASS: TestStubsUtilityFunctions_Coverage/Utility_functions_exist_and_work (0.00s)
+PASS
+coverage: 70.2% of statements
+ok  	github.com/konflux-ci/gitops-registration-service/internal/services	3.635s	coverage: 70.2% of statements
+=== RUN   TestRegistration_JSONSerialization
+--- PASS: TestRegistration_JSONSerialization (0.00s)
+=== RUN   TestRegistrationRequest_JSONSerialization
+--- PASS: TestRegistrationRequest_JSONSerialization (0.00s)
+=== RUN   TestExistingNamespaceRequest_JSONSerialization
+--- PASS: TestExistingNamespaceRequest_JSONSerialization (0.00s)
+=== RUN   TestUserInfo_JSONSerialization
+--- PASS: TestUserInfo_JSONSerialization (0.00s)
+=== RUN   TestAppProject_JSONSerialization
+--- PASS: TestAppProject_JSONSerialization (0.00s)
+=== RUN   TestApplication_JSONSerialization
+--- PASS: TestApplication_JSONSerialization (0.00s)
+=== RUN   TestCapacityStatus_JSONSerialization
+--- PASS: TestCapacityStatus_JSONSerialization (0.00s)
+=== RUN   TestErrorResponse_JSONSerialization
+--- PASS: TestErrorResponse_JSONSerialization (0.00s)
+=== RUN   TestHealthResponse_JSONSerialization
+--- PASS: TestHealthResponse_JSONSerialization (0.00s)
+=== RUN   TestRepository_DefaultValues
+--- PASS: TestRepository_DefaultValues (0.00s)
+=== RUN   TestCredentials_Types
+=== RUN   TestCredentials_Types/token_credentials
+=== RUN   TestCredentials_Types/ssh_credentials
+=== RUN   TestCredentials_Types/github-app_credentials
+--- PASS: TestCredentials_Types (0.00s)
+    --- PASS: TestCredentials_Types/token_credentials (0.00s)
+    --- PASS: TestCredentials_Types/ssh_credentials (0.00s)
+    --- PASS: TestCredentials_Types/github-app_credentials (0.00s)
+=== RUN   TestRegistrationStatus_Phases
+--- PASS: TestRegistrationStatus_Phases (0.00s)
+=== RUN   TestCapacityStatus_StatusValues
+--- PASS: TestCapacityStatus_StatusValues (0.00s)
+PASS
+coverage: [no statements]
+ok  	github.com/konflux-ci/gitops-registration-service/internal/types	2.637s	coverage: [no statements]

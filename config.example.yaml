@@ -18,23 +18,21 @@ security:
     - "cronjobs"
     - "secrets"
     - "rolebindings"
-  
-  # Resource restrictions - cluster admin can provide EITHER allowList OR denyList, not both
-  
+
+  # Resource restrictions - cluster admin can provide EITHER allowList OR
+  # denyList, not both
+
   # Example: Allow only specific resource types (whitelist approach)
   resourceAllowList:
-    - group: ""
-      kind: "ConfigMap"
-    - group: ""
-      kind: "Service"
     - group: "apps"
       kind: "Deployment"
     - group: "batch"
       kind: "Job"
     - group: "batch"
       kind: "CronJob"
-  
-  # Example: Block specific resource types (blacklist approach) - uncomment to use instead of allowList
+
+  # Example: Block specific resource types (blacklist approach)
+  # - uncomment to use instead of allowList
   # resourceDenyList:
   #   - group: ""
   #     kind: "Secret"
@@ -47,7 +45,7 @@ security:
   #     kind: "KafkaTopic"
   #   - group: "database.example.com"
   #     kind: "MySQLDatabase"
-  
+
   requireAppProjectPerTenant: true
   enableServiceAccountImpersonation: true
 
@@ -67,4 +65,4 @@ tenants:
     requests.memory: "2Gi"
     limits.cpu: "4"
     limits.memory: "8Gi"
-    persistentvolumeclaims: "10" 
+    persistentvolumeclaims: "10"

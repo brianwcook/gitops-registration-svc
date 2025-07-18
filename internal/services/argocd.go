@@ -5,16 +5,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/konflux-ci/gitops-registration-service/internal/config"
+	"github.com/konflux-ci/gitops-registration-service/internal/types"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/rest"
-
-	"github.com/konflux-ci/gitops-registration-service/internal/config"
-	"github.com/konflux-ci/gitops-registration-service/internal/types"
 )
 
 // argoCDService is the real implementation of ArgoCDService
@@ -42,13 +40,20 @@ var (
 
 // NewArgoCDServiceReal creates a new real ArgoCDService implementation
 func NewArgoCDServiceReal(cfg *config.Config, logger *logrus.Logger) (ArgoCDService, error) {
-	// Use in-cluster config for real deployment
-	config, err := rest.InClusterConfig()
+	factory := &InClusterArgoCDFactory{}
+	return NewArgoCDServiceWithFactory(cfg, logger, factory)
+}
+
+// NewArgoCDServiceWithFactory creates an ArgoCDService using the provided factory
+func NewArgoCDServiceWithFactory(cfg *config.Config, logger *logrus.Logger, factory ArgoCDClientFactory) (ArgoCDService, error) {
+	// Create config using factory
+	config, err := factory.CreateConfig()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get in-cluster config: %w", err)
+		return nil, fmt.Errorf("failed to create config: %w", err)
 	}
 
-	client, err := dynamic.NewForConfig(config)
+	// Create dynamic client using factory
+	client, err := factory.CreateDynamicClient(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create dynamic client: %w", err)
 	}
@@ -64,7 +69,24 @@ func NewArgoCDServiceReal(cfg *config.Config, logger *logrus.Logger) (ArgoCDServ
 func (a *argoCDService) CreateAppProject(ctx context.Context, project *types.AppProject) error {
 	a.logger.WithField("project", project.Name).Info("Creating ArgoCD AppProject")
 
-	// Build AppProject spec
+	spec := a.buildProjectSpec(project)
+	appProject := a.buildAppProjectResource(project, spec)
+
+	_, err := a.client.Resource(appProjectGVR).Namespace(a.namespace).Create(ctx, appProject, metav1.CreateOptions{})
+	if err != nil {
+		if errors.IsAlreadyExists(err) {
+			a.logger.WithField("project", project.Name).Info("AppProject already exists")
+			return nil
+		}
+		return fmt.Errorf("failed to create AppProject %s: %w", project.Name, err)
+	}
+
+	a.logger.WithField("project", project.Name).Info("Successfully created ArgoCD AppProject")
+	return nil
+}
+
+// buildProjectSpec creates the spec section for an AppProject
+func (a *argoCDService) buildProjectSpec(project *types.AppProject) map[string]interface{} {
 	spec := map[string]interface{}{
 		"sourceRepos": project.SourceRepos,
 		"destinations": []interface{}{
@@ -85,8 +107,14 @@ func (a *argoCDService) CreateAppProject(ctx context.Context, project *types.App
 		},
 	}
 
-	// Handle resource restrictions based on whitelist/blacklist configuration
-	if len(project.ClusterResourceWhitelist) > 0 || len(project.NamespaceResourceWhitelist) > 0 {
+	a.addResourceRestrictions(spec, project)
+	return spec
+}
+
+// addResourceRestrictions adds resource allow/deny lists to the project spec
+func (a *argoCDService) addResourceRestrictions(spec map[string]interface{}, project *types.AppProject) {
+	switch {
+	case len(project.ClusterResourceWhitelist) > 0 || len(project.NamespaceResourceWhitelist) > 0:
 		// Use whitelist (allowList)
 		if len(project.ClusterResourceWhitelist) > 0 {
 			spec["clusterResourceWhitelist"] = a.convertResourceListToInterface(project.ClusterResourceWhitelist)
@@ -94,7 +122,7 @@ func (a *argoCDService) CreateAppProject(ctx context.Context, project *types.App
 		if len(project.NamespaceResourceWhitelist) > 0 {
 			spec["namespaceResourceWhitelist"] = a.convertResourceListToInterface(project.NamespaceResourceWhitelist)
 		}
-	} else if len(project.ClusterResourceBlacklist) > 0 || len(project.NamespaceResourceBlacklist) > 0 {
+	case len(project.ClusterResourceBlacklist) > 0 || len(project.NamespaceResourceBlacklist) > 0:
 		// Use blacklist (denyList)
 		if len(project.ClusterResourceBlacklist) > 0 {
 			spec["clusterResourceBlacklist"] = a.convertResourceListToInterface(project.ClusterResourceBlacklist)
@@ -102,31 +130,33 @@ func (a *argoCDService) CreateAppProject(ctx context.Context, project *types.App
 		if len(project.NamespaceResourceBlacklist) > 0 {
 			spec["namespaceResourceBlacklist"] = a.convertResourceListToInterface(project.NamespaceResourceBlacklist)
 		}
-	} else {
+	default:
 		// No restrictions provided - use default secure whitelist
-		spec["clusterResourceWhitelist"] = []interface{}{
-			map[string]interface{}{
-				"group": "",
-				"kind":  "Namespace",
-			},
-		}
-		spec["namespaceResourceWhitelist"] = []interface{}{
-			map[string]interface{}{"group": "", "kind": "ConfigMap"},
-			map[string]interface{}{"group": "", "kind": "Secret"},
-			map[string]interface{}{"group": "", "kind": "Service"},
-			map[string]interface{}{"group": "", "kind": "ServiceAccount"},
-			map[string]interface{}{"group": "apps", "kind": "Deployment"},
-			map[string]interface{}{"group": "apps", "kind": "ReplicaSet"},
-			map[string]interface{}{"group": "batch", "kind": "Job"},
-			map[string]interface{}{"group": "batch", "kind": "CronJob"},
-			map[string]interface{}{"group": "rbac.authorization.k8s.io", "kind": "Role"},
-			map[string]interface{}{"group": "rbac.authorization.k8s.io", "kind": "RoleBinding"},
-			map[string]interface{}{"group": "networking.k8s.io", "kind": "NetworkPolicy"},
-		}
+		spec["clusterResourceWhitelist"] = []interface{}{}
+		spec["namespaceResourceWhitelist"] = a.buildDefaultResourceWhitelist()
 	}
+}
 
-	// Build AppProject resource
-	appProject := &unstructured.Unstructured{
+// buildDefaultResourceWhitelist returns the default secure resource whitelist
+func (a *argoCDService) buildDefaultResourceWhitelist() []interface{} {
+	return []interface{}{
+		map[string]interface{}{"group": "", "kind": "ConfigMap"},
+		map[string]interface{}{"group": "", "kind": "Secret"},
+		map[string]interface{}{"group": "", "kind": "Service"},
+		map[string]interface{}{"group": "", "kind": "ServiceAccount"},
+		map[string]interface{}{"group": "apps", "kind": "Deployment"},
+		map[string]interface{}{"group": "apps", "kind": "ReplicaSet"},
+		map[string]interface{}{"group": "batch", "kind": "Job"},
+		map[string]interface{}{"group": "batch", "kind": "CronJob"},
+		map[string]interface{}{"group": "rbac.authorization.k8s.io", "kind": "Role"},
+		map[string]interface{}{"group": "rbac.authorization.k8s.io", "kind": "RoleBinding"},
+		map[string]interface{}{"group": "networking.k8s.io", "kind": "NetworkPolicy"},
+	}
+}
+
+// buildAppProjectResource creates the full AppProject unstructured resource
+func (a *argoCDService) buildAppProjectResource(project *types.AppProject, spec map[string]interface{}) *unstructured.Unstructured {
+	return &unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": "argoproj.io/v1alpha1",
 			"kind":       "AppProject",
@@ -142,18 +172,6 @@ func (a *argoCDService) CreateAppProject(ctx context.Context, project *types.App
 			"spec": spec,
 		},
 	}
-
-	_, err := a.client.Resource(appProjectGVR).Namespace(a.namespace).Create(ctx, appProject, metav1.CreateOptions{})
-	if err != nil {
-		if errors.IsAlreadyExists(err) {
-			a.logger.WithField("project", project.Name).Info("AppProject already exists")
-			return nil
-		}
-		return fmt.Errorf("failed to create AppProject %s: %w", project.Name, err)
-	}
-
-	a.logger.WithField("project", project.Name).Info("Successfully created ArgoCD AppProject")
-	return nil
 }
 
 func (a *argoCDService) convertResourceListToInterface(resources []types.AppProjectResource) []interface{} {
@@ -167,20 +185,25 @@ func (a *argoCDService) convertResourceListToInterface(resources []types.AppProj
 	return result
 }
 
-func (a *argoCDService) DeleteAppProject(ctx context.Context, name string) error {
-	a.logger.WithField("project", name).Info("Deleting ArgoCD AppProject")
+// deleteResource is a helper function that handles deletion of ArgoCD resources
+func (a *argoCDService) deleteResource(ctx context.Context, name, resourceType string, gvr schema.GroupVersionResource) error {
+	a.logger.WithField(resourceType, name).Infof("Deleting ArgoCD %s", resourceType)
 
-	err := a.client.Resource(appProjectGVR).Namespace(a.namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	err := a.client.Resource(gvr).Namespace(a.namespace).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
-			a.logger.WithField("project", name).Info("AppProject already deleted")
+			a.logger.WithField(resourceType, name).Infof("%s already deleted", resourceType)
 			return nil
 		}
-		return fmt.Errorf("failed to delete AppProject %s: %w", name, err)
+		return fmt.Errorf("failed to delete %s %s: %w", resourceType, name, err)
 	}
 
-	a.logger.WithField("project", name).Info("Successfully deleted ArgoCD AppProject")
+	a.logger.WithField(resourceType, name).Infof("Successfully deleted ArgoCD %s", resourceType)
 	return nil
+}
+
+func (a *argoCDService) DeleteAppProject(ctx context.Context, name string) error {
+	return a.deleteResource(ctx, name, "project", appProjectGVR)
 }
 
 func (a *argoCDService) CreateApplication(ctx context.Context, app *types.Application) error {
@@ -240,43 +263,35 @@ func (a *argoCDService) CreateApplication(ctx context.Context, app *types.Applic
 }
 
 func (a *argoCDService) DeleteApplication(ctx context.Context, name string) error {
-	a.logger.WithField("application", name).Info("Deleting ArgoCD Application")
-
-	err := a.client.Resource(applicationGVR).Namespace(a.namespace).Delete(ctx, name, metav1.DeleteOptions{})
-	if err != nil {
-		if errors.IsNotFound(err) {
-			a.logger.WithField("application", name).Info("Application already deleted")
-			return nil
-		}
-		return fmt.Errorf("failed to delete Application %s: %w", name, err)
-	}
-
-	a.logger.WithField("application", name).Info("Successfully deleted ArgoCD Application")
-	return nil
+	return a.deleteResource(ctx, name, "Application", applicationGVR)
 }
 
+// GetApplicationStatus retrieves the status of an ArgoCD Application
 func (a *argoCDService) GetApplicationStatus(ctx context.Context, name string) (*types.ApplicationStatus, error) {
+	a.logger.WithField("application", name).Info("Getting ArgoCD Application status")
+
 	app, err := a.client.Resource(applicationGVR).Namespace(a.namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil, fmt.Errorf("application %s not found", name)
+		}
 		return nil, fmt.Errorf("failed to get Application %s: %w", name, err)
 	}
 
+	// Extract status information
 	status := &types.ApplicationStatus{
-		Phase:   "unknown",
+		Phase:   "Unknown",
+		Health:  "Unknown",
+		Sync:    "Unknown",
 		Message: "Application found",
 	}
 
-	// Extract sync status
-	if syncStatus, found, err := unstructured.NestedString(app.Object, "status", "sync", "status"); err == nil && found {
-		status.Phase = syncStatus
-	}
-
-	// Extract health status
+	// Try to extract health status
 	if healthStatus, found, err := unstructured.NestedString(app.Object, "status", "health", "status"); err == nil && found {
-		status.Message = fmt.Sprintf("Sync: %s, Health: %s", status.Phase, healthStatus)
+		status.Health = healthStatus
 	}
 
-	// Extract last operation timestamp
+	// Try to extract sync status and last operation time
 	if operationTime, found, err := unstructured.NestedString(app.Object, "status", "operationState", "finishedAt"); err == nil && found {
 		if timestamp, err := time.Parse(time.RFC3339, operationTime); err == nil {
 			status.LastSyncTime = timestamp
@@ -293,4 +308,23 @@ func (a *argoCDService) HealthCheck(ctx context.Context) error {
 		return fmt.Errorf("ArgoCD health check failed: %w", err)
 	}
 	return nil
+}
+
+// CheckAppProjectConflict checks if an AppProject exists for the given repository hash
+func (a *argoCDService) CheckAppProjectConflict(ctx context.Context, repositoryHash string) (bool, error) {
+	labelSelector := fmt.Sprintf("%s=%s", RepositoryHashLabel, repositoryHash)
+
+	appProjects, err := a.client.Resource(appProjectGVR).Namespace(a.namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: labelSelector,
+	})
+	if err != nil {
+		return false, fmt.Errorf("failed to check AppProject conflict for repository hash %s: %w", repositoryHash, err)
+	}
+
+	exists := len(appProjects.Items) > 0
+	if exists {
+		a.logger.Infof("Found existing AppProject for repository hash %s", repositoryHash)
+	}
+
+	return exists, nil
 }

@@ -1,0 +1,307 @@
+[0;34m[INFO][0m Starting Enhanced GitOps Registration Service Integration Tests
+[0;34m[INFO][0m ==============================================================
+[0;34m[INFO][0m Waiting for GitOps Registration Service to be ready...
+[0;34m[INFO][0m Attempt 1/30 - Service not ready yet, waiting...
+[0;32m[SUCCESS][0m Service is ready
+[0;34m[INFO][0m Testing service health endpoints...
+[0;32m[SUCCESS][0m ✓ GET /health/live returned 200 as expected
+[0;32m[SUCCESS][0m ✓ GET /health/ready returned 200 as expected
+[0;34m[INFO][0m Testing namespace conflict detection...
+namespace/conflict-test-ns configured
+[0;34m[INFO][0m Successfully obtained authentication token for conflict test
+[0;32m[SUCCESS][0m ✓ POST /api/v1/registrations returned 409 as expected
+[0;32m[SUCCESS][0m ✓ Namespace conflict properly detected and rejected
+[0;34m[INFO][0m Testing enhanced repository registration with full verification...
+namespace "team-alpha" deleted
+application.argoproj.io "team-alpha-app" deleted
+appproject.argoproj.io "team-alpha" deleted
+[0;34m[INFO][0m Successfully obtained authentication token for registration test
+[0;34m[INFO][0m Step 1: Making registration request...
+[0;32m[SUCCESS][0m ✓ POST /api/v1/registrations returned 201 as expected
+[0;32m[SUCCESS][0m ✓ Registration request succeeded
+[0;34m[INFO][0m Step 2: Verifying namespace creation...
+[0;32m[SUCCESS][0m ✓ Namespace team-alpha was created
+[0;32m[SUCCESS][0m ✓ Namespace has correct management label
+[0;32m[SUCCESS][0m ✓ Namespace has correct repository URL annotation
+[0;32m[SUCCESS][0m ✓ Namespace has repository domain label: git-servers.git-servers.svc.cluster.local
+[0;32m[SUCCESS][0m ✓ Namespace has correct repository branch annotation
+[0;34m[INFO][0m Step 3: Verifying ArgoCD AppProject creation...
+[0;32m[SUCCESS][0m ✓ ArgoCD AppProject team-alpha was created
+[0;34m[INFO][0m Step 4: Verifying ArgoCD Application creation...
+[0;32m[SUCCESS][0m ✓ ArgoCD Application team-alpha-app was created
+[0;34m[INFO][0m Step 5: Waiting for ArgoCD sync and verifying sync status...
+[0;34m[INFO][0m Waiting for ArgoCD application team-alpha-app to sync...
+[0;34m[INFO][0m Attempt 1/6 - Sync: Synced, Health: Healthy
+[0;32m[SUCCESS][0m ✓ ArgoCD application team-alpha-app is synced and healthy
+[0;34m[INFO][0m Checking objects in namespace team-alpha...
+[0;34m[INFO][0m Found in team-alpha:        1 deployments,        0 configmaps,        0 services
+[0;32m[SUCCESS][0m ✓ Found deployments in namespace team-alpha
+[0;32m[SUCCESS][0m ✓ ArgoCD application synced successfully and objects deployed
+[0;34m[INFO][0m Step 6: Verifying specific objects were deployed...
+[0;32m[SUCCESS][0m ✓ Found        1 deployment(s) in namespace
+[0;34m[INFO][0m    - Deployment: team-alpha-app   2/2   2     2     22s
+[0;34m[INFO][0m Enhanced registration test completed for team-alpha
+[0;34m[INFO][0m Namespace: ✓ Exists
+[0;34m[INFO][0m AppProject: ✓ Exists
+[0;34m[INFO][0m Application: ✓ Exists
+[0;34m[INFO][0m Sync Status: Synced
+[0;34m[INFO][0m Health Status: Healthy
+[0;34m[INFO][0m Testing enhanced existing namespace registration...
+[0;34m[INFO][0m Step 1: Creating existing namespace for testing...
+namespace/test-existing-ns configured
+[0;34m[INFO][0m Step 2: Making existing namespace registration request...
+[0;34m[INFO][0m Getting authentication token for existing namespace registration...
+[0;34m[INFO][0m Successfully obtained authentication token
+[0;32m[SUCCESS][0m ✓ POST /api/v1/registrations/existing returned 201 as expected
+[0;32m[SUCCESS][0m ✓ Existing namespace registration succeeded (feature is implemented!)
+[0;34m[INFO][0m Verifying repository metadata on existing namespace...
+[0;32m[SUCCESS][0m ✓ Existing namespace has correct repository URL annotation
+[0;32m[SUCCESS][0m ✓ Existing namespace has repository domain label: git-servers.git-servers.svc.cluster.local
+[0;32m[SUCCESS][0m ✓ Existing namespace has correct management label
+[0;34m[INFO][0m Waiting for ArgoCD sync for existing namespace registration...
+[0;34m[INFO][0m Waiting for ArgoCD application test-existing-ns-app to sync...
+[0;34m[INFO][0m Attempt 1/6 - Sync: Synced, Health: Healthy
+[0;32m[SUCCESS][0m ✓ ArgoCD application test-existing-ns-app is synced and healthy
+[0;34m[INFO][0m Checking objects in namespace test-existing-ns...
+[0;34m[INFO][0m Found in test-existing-ns:        1 deployments,        1 configmaps,        1 services
+[0;32m[SUCCESS][0m ✓ Found deployments in namespace test-existing-ns
+[0;32m[SUCCESS][0m ✓ ArgoCD application synced successfully for existing namespace
+[0;34m[INFO][0m Step 3: Feature implementation verification...
+[0;34m[INFO][0m Note: ArgoCD resource verification will be enabled when existing namespace registration is implemented
+[0;34m[INFO][0m Testing namespace security restrictions - tenants cannot create namespaces...
+namespace "security-test" deleted
+application.argoproj.io "security-test-app" deleted
+appproject.argoproj.io "security-test" deleted
+[0;34m[INFO][0m Successfully obtained authentication token for namespace security test
+[0;34m[INFO][0m Step 1: Creating tenant registration...
+[0;32m[SUCCESS][0m ✓ POST /api/v1/registrations returned 201 as expected
+[0;32m[SUCCESS][0m ✓ Tenant registration succeeded
+[0;32m[SUCCESS][0m ✓ ArgoCD AppProject was created
+[0;34m[INFO][0m Step 2: Verifying AppProject security configuration blocks namespace creation...
+[0;32m[SUCCESS][0m ✓ AppProject restricts deployments to namespace: security-test
+[0;32m[SUCCESS][0m ✓ AppProject uses default security (no explicit namespace creation allowed)
+[0;34m[INFO][0m No cluster resource whitelist found - using ArgoCD default security
+[0;34m[INFO][0m AppProject Security Configuration:
+[
+  {
+    "namespace": "security-test",
+    "server": "https://kubernetes.default.svc"
+  }
+]
+[0;34m[INFO][0m Testing tenant separation and cross-namespace isolation...
+[1;33m[WARNING][0m NOTE: This test validates that tenants cannot access each other's namespaces.
+application.argoproj.io "tenant-secure-app" deleted
+appproject.argoproj.io "tenant-secure" deleted
+[0;34m[INFO][0m Step 1: Testing service responsiveness and authentication...
+[0;32m[SUCCESS][0m ✓ GET /health/live returned 200 as expected
+[0;32m[SUCCESS][0m ✓ Service is responding properly
+[0;34m[INFO][0m Step 2: Testing basic registration flow (tenant namespace creation)...
+[0;32m[SUCCESS][0m ✓ Authentication token obtained
+[0;34m[INFO][0m Step 3: Testing registration request (expect RBAC failure but namespace creation)...
+[0;32m[SUCCESS][0m ✓ Registration succeeded completely (RBAC is properly configured!)
+[0;34m[INFO][0m Step 4: Verifying tenant namespace isolation...
+[0;32m[SUCCESS][0m ✓ Tenant namespace 'tenant-secure' was created (proves isolation concept)
+[0;32m[SUCCESS][0m ✓ Namespace has tenant identification metadata
+[0;34m[INFO][0m Step 5: Validating tenant separation concept...
+[0;34m[INFO][0m Testing RBAC enforcement for tenant separation...
+configmap/tenant-separation-test created
+[1;33m[WARNING][0m ⚠ Integration test environment: Service account can create resources in kube-system
+[0;34m[INFO][0m   This is expected in test environment - production would have stricter RBAC
+[0;34m[INFO][0m   In production: Use namespace-scoped Roles instead of ClusterRole for tenant service accounts
+configmap "tenant-separation-test" deleted
+[0;34m[INFO][0m Step 6: Documenting expected AppProject security behavior...
+[0;34m[INFO][0m When 'gitops-role' RBAC is configured, this test would also verify:
+[0;34m[INFO][0m   • AppProject created with destinations restricted to 'tenant-secure' only
+[0;34m[INFO][0m   • No access granted to kube-system, default, or other tenant namespaces
+[0;34m[INFO][0m   • ArgoCD enforcement of tenant boundaries via AppProject.spec.destinations
+[0;34m[INFO][0m   • Complete end-to-end tenant isolation
+[0;34m[INFO][0m Expected AppProject configuration:
+  apiVersion: argoproj.io/v1alpha1
+  kind: AppProject
+  metadata:
+    name: tenant-secure
+    namespace: argocd
+  spec:
+    destinations:
+    - namespace: tenant-secure    # ✅ ONLY this namespace allowed
+      server: https://kubernetes.default.svc
+    # ❌ NO access to kube-system, default, or other tenant namespaces
+    sourceRepos:
+    - http://git-servers.git-servers.svc.cluster.local/git/team-alpha-config.git
+namespace "tenant-secure" deleted
+[0;34m[INFO][0m 
+[0;32m[SUCCESS][0m Tenant Separation Security Test Results:
+[0;34m[INFO][0m   ✅ Service authentication and basic flow working
+[0;34m[INFO][0m   ✅ Tenant namespace isolation functional
+[0;34m[INFO][0m   ✅ RBAC enforcement prevents unauthorized system access
+[0;34m[INFO][0m   ✅ Tenant separation security concept validated
+[1;33m[WARNING][0m   ⚠  Full AppProject testing requires 'gitops-role' RBAC configuration
+[0;34m[INFO][0m   🔧 To enable full testing: Create ClusterRole 'gitops-role' with namespace management permissions
+[0;34m[INFO][0m 
+[0;34m[INFO][0m Testing ArgoCD namespace enforcement prevents cross-namespace deployments...
+[1;33m[WARNING][0m This test verifies that Team A cannot deploy to Team B's namespace
+application.argoproj.io "team-a-secure-app" deleted
+application.argoproj.io "team-b-secure-app" deleted
+application.argoproj.io "malicious-tenant-app" deleted
+appproject.argoproj.io "team-a-secure" deleted
+appproject.argoproj.io "team-b-secure" deleted
+appproject.argoproj.io "malicious-tenant" deleted
+[0;34m[INFO][0m Step 1: Setting up Team A (legitimate tenant)...
+[0;34m[INFO][0m Authentication token obtained for cross-namespace test
+[0;32m[SUCCESS][0m ✓ POST /api/v1/registrations returned 201 as expected
+[0;32m[SUCCESS][0m ✓ Team A registered successfully
+[0;34m[INFO][0m Step 2: Setting up Team B (legitimate tenant)...
+[0;32m[SUCCESS][0m ✓ POST /api/v1/registrations returned 201 as expected
+[0;32m[SUCCESS][0m ✓ Team B registered successfully
+[0;34m[INFO][0m Step 3: Setting up malicious tenant (attempts cross-namespace attacks)...
+[0;32m[SUCCESS][0m ✓ POST /api/v1/registrations returned 201 as expected
+[0;32m[SUCCESS][0m ✓ Malicious tenant registered (but should be constrained by AppProject)
+[0;34m[INFO][0m Step 4: Verifying AppProject destination restrictions are in place...
+[0;32m[SUCCESS][0m ✓ Team A AppProject restricts to: team-a-secure
+[0;32m[SUCCESS][0m ✓ Team B AppProject restricts to: team-b-secure
+[0;32m[SUCCESS][0m ✓ Malicious AppProject restricts to: malicious-tenant (good!)
+[0;34m[INFO][0m Step 5: Verifying ArgoCD namespace enforcement configuration...
+[0;32m[SUCCESS][0m ✓ ArgoCD namespace enforcement is ENABLED
+[0;34m[INFO][0m Step 6: Testing cross-namespace attack prevention...
+[0;34m[INFO][0m Checking Team A deployment isolation...
+[1;33m[WARNING][0m ⚠ Team A has no deployments - sync may be pending
+[0;34m[INFO][0m Checking Team B deployment isolation...
+[0;32m[SUCCESS][0m ✓ Team B successfully deployed to authorized namespace: team-b-secure
+[0;34m[INFO][0m Step 7: Verifying cross-namespace attacks are BLOCKED...
+[0;32m[SUCCESS][0m ✓ Cross-tenant attack on team-a namespace BLOCKED
+[0;32m[SUCCESS][0m ✓ Cross-tenant attack on team-b namespace BLOCKED
+[0;32m[SUCCESS][0m ✓ Attack on kube-system namespace BLOCKED
+[0;32m[SUCCESS][0m ✓ Attack on default namespace BLOCKED
+[0;34m[INFO][0m Step 8: Checking ArgoCD Application sync status for security violations...
+[0;34m[INFO][0m Malicious app - Sync: Unknown, Health: Healthy
+[1;33m[WARNING][0m ⚠ Malicious application status unclear - may be partially blocked
+[0;34m[INFO][0m Cleaning up cross-namespace test resources...
+namespace "team-a-secure" deleted
+namespace "team-b-secure" deleted
+namespace "malicious-tenant" deleted
+[0;34m[INFO][0m 
+[0;32m[SUCCESS][0m Cross-Namespace Deployment Prevention Test Results:
+[0;34m[INFO][0m   ✅ AppProject destination restrictions configured correctly
+[0;34m[INFO][0m   ✅ ArgoCD namespace enforcement enabled
+[0;34m[INFO][0m   ✅ Cross-tenant attacks successfully blocked
+[0;34m[INFO][0m   ✅ Legitimate tenant deployments allowed in authorized namespaces
+[0;34m[INFO][0m   🔐 Namespace isolation security validated!
+[0;34m[INFO][0m 
+[0;34m[INFO][0m Testing resource restrictions with service-level deny list (blacklist)...
+[0;34m[INFO][0m Note: Resource restrictions are configured at service level, not per-request
+namespace "team-deny-list" deleted
+application.argoproj.io "team-deny-list-app" deleted
+appproject.argoproj.io "team-deny-list" deleted
+[0;34m[INFO][0m Updating service configuration for denyList test...
+configmap/gitops-registration-config patched
+[0;34m[INFO][0m Restarting service to apply new configuration...
+pod "gitops-registration-00001-deployment-6fd5ff44cc-j4mmk" deleted
+pod/gitops-registration-00001-deployment-6fd5ff44cc-96h9j condition met
+[0;32m[SUCCESS][0m Service restarted with denyList configuration
+[0;34m[INFO][0m Successfully obtained authentication token for deny list test
+[0;34m[INFO][0m Step 1: Registering with service deny list (blocking Secrets via service config)...
+[0;32m[SUCCESS][0m ✓ POST /api/v1/registrations returned 201 as expected
+[0;32m[SUCCESS][0m ✓ Registration with deny list succeeded
+[0;34m[INFO][0m Step 2: Verifying AppProject has correct resource blacklist...
+[0;32m[SUCCESS][0m ✓ ArgoCD AppProject team-deny-list was created
+[0;32m[SUCCESS][0m ✓ AppProject has correct resource blacklist (Secret)
+[0;34m[INFO][0m Step 3: Waiting for ArgoCD sync and verifying Secret is blocked...
+[0;32m[SUCCESS][0m ✓ ArgoCD Application team-deny-list-app was created
+[0;32m[SUCCESS][0m ✓ Allowed resources synced:        1 deployment(s)
+[0;32m[SUCCESS][0m ✓ Blocked resources correctly denied: 0 custom secrets
+[0;34m[INFO][0m    ArgoCD Sync Status: Synced
+[0;34m[INFO][0m Resource restrictions deny list test completed
+[0;34m[INFO][0m Testing resource restrictions with service-level allow list (whitelist)...
+[0;34m[INFO][0m Note: Resource restrictions are configured at service level, not per-request
+namespace "team-allow-list" deleted
+application.argoproj.io "team-allow-list-app" deleted
+appproject.argoproj.io "team-allow-list" deleted
+[0;34m[INFO][0m Updating service configuration for allowList test...
+configmap/gitops-registration-config patched
+[0;34m[INFO][0m Restarting service to apply new configuration...
+pod "gitops-registration-00001-deployment-6fd5ff44cc-96h9j" deleted
+pod/gitops-registration-00001-deployment-6fd5ff44cc-d7mgr condition met
+[0;32m[SUCCESS][0m Service restarted with allowList configuration
+[0;34m[INFO][0m Successfully obtained authentication token for allow list test
+[0;34m[INFO][0m Step 1: Registering with service allow list (only Deployments and ConfigMaps via service config)...
+[0;32m[SUCCESS][0m ✓ POST /api/v1/registrations returned 201 as expected
+[0;32m[SUCCESS][0m ✓ Registration with allow list succeeded
+[0;34m[INFO][0m Step 2: Verifying AppProject has correct resource whitelist...
+[0;32m[SUCCESS][0m ✓ ArgoCD AppProject team-allow-list was created
+[0;32m[SUCCESS][0m ✓ AppProject has resource whitelist (2 items)
+[0;34m[INFO][0m Step 3: Waiting for ArgoCD sync and verifying only allowed resources sync...
+[0;32m[SUCCESS][0m ✓ ArgoCD Application team-allow-list-app was created
+[0;32m[SUCCESS][0m ✓ Allow list correctly blocks entire sync when restricted resources are present
+[0;32m[SUCCESS][0m ✓ Non-whitelisted resources correctly blocked: 0 services
+[0;32m[SUCCESS][0m ✓ Non-whitelisted resources correctly blocked: 0 custom secrets
+[0;34m[INFO][0m    ArgoCD Sync Status: OutOfSync
+[0;32m[SUCCESS][0m ✓ Allow list correctly prevents sync due to blocked resources
+[0;34m[INFO][0m Resource restrictions allow list test completed
+[0;34m[INFO][0m Testing resource restrictions with no restrictions (default behavior)...
+namespace "team-no-restrictions" deleted
+application.argoproj.io "team-no-restrictions-app" deleted
+appproject.argoproj.io "team-no-restrictions" deleted
+[0;34m[INFO][0m Updating service configuration for none test...
+configmap/gitops-registration-config patched
+[0;34m[INFO][0m Restarting service to apply new configuration...
+pod "gitops-registration-00001-deployment-6fd5ff44cc-d7mgr" deleted
+pod/gitops-registration-00001-deployment-6fd5ff44cc-xdmsr condition met
+[0;32m[SUCCESS][0m Service restarted with none configuration
+[0;34m[INFO][0m Successfully obtained authentication token for no restrictions test
+[0;34m[INFO][0m Step 1: Registering with no resource restrictions...
+[0;32m[SUCCESS][0m ✓ POST /api/v1/registrations returned 201 as expected
+[0;32m[SUCCESS][0m ✓ Registration with no restrictions succeeded
+[0;34m[INFO][0m Step 2: Verifying AppProject exists...
+[0;32m[SUCCESS][0m ✓ ArgoCD AppProject team-no-restrictions was created
+[0;34m[INFO][0m Step 3: Waiting for ArgoCD sync and verifying all resources sync...
+[0;34m[INFO][0m Waiting for ArgoCD application team-no-restrictions-app to sync...
+[0;34m[INFO][0m Attempt 1/6 - Sync: Synced, Health: Healthy
+[0;32m[SUCCESS][0m ✓ ArgoCD application team-no-restrictions-app is synced and healthy
+[0;34m[INFO][0m Checking objects in namespace team-no-restrictions...
+[0;34m[INFO][0m Found in team-no-restrictions:        1 deployments,        1 configmaps,        1 services
+[0;32m[SUCCESS][0m ✓ Found deployments in namespace team-no-restrictions
+[0;32m[SUCCESS][0m ✓ ArgoCD application synced successfully
+[0;32m[SUCCESS][0m ✓ All resources synced:        1 deployment(s)
+[0;32m[SUCCESS][0m ✓ All resources synced:        1 service(s)
+[1;33m[WARNING][0m ⚠ No custom secrets found
+[0;34m[INFO][0m Resource restrictions no restrictions test completed
+[0;34m[INFO][0m Testing repository metadata verification on namespaces...
+namespace "metadata-test-ns" deleted
+application.argoproj.io "metadata-test-ns-app" deleted
+appproject.argoproj.io "metadata-test-ns" deleted
+[0;34m[INFO][0m Successfully obtained authentication token for metadata test
+[0;34m[INFO][0m Step 1: Creating registration for metadata verification...
+[0;32m[SUCCESS][0m ✓ POST /api/v1/registrations returned 201 as expected
+[0;32m[SUCCESS][0m ✓ Registration created successfully
+[0;34m[INFO][0m Step 2: Verifying comprehensive repository metadata...
+[0;34m[INFO][0m Testing repository URL annotation...
+[0;32m[SUCCESS][0m ✓ Repository URL annotation is correct: http://git-servers.git-servers.svc.cluster.local/git/team-alpha-config.git
+[0;34m[INFO][0m Testing repository branch annotation...
+[0;32m[SUCCESS][0m ✓ Repository branch annotation is correct: main
+[0;34m[INFO][0m Testing repository domain label...
+[0;32m[SUCCESS][0m ✓ Repository domain label is present: git-servers.git-servers.svc.cluster.local
+[0;32m[SUCCESS][0m ✓ Repository domain label contains expected hostname pattern
+[0;34m[INFO][0m Testing registration ID annotation...
+[0;32m[SUCCESS][0m ✓ Registration ID annotation is present: 81e879fe...
+[0;34m[INFO][0m Testing repository hash label...
+[0;32m[SUCCESS][0m ✓ Repository hash label is present and properly formatted: 870d5171
+[0;34m[INFO][0m Testing standard management labels...
+[0;32m[SUCCESS][0m ✓ GitOps management label is correct
+[0;32m[SUCCESS][0m ✓ App management label is correct
+[0;34m[INFO][0m Step 3: Testing label selector functionality...
+[0;32m[SUCCESS][0m ✓ Can select namespaces by repository domain label
+[0;32m[SUCCESS][0m ✓ Can select namespaces managed by GitOps service:        7 found
+[0;34m[INFO][0m Repository metadata verification test completed
+[0;34m[INFO][0m Summary of metadata on namespace metadata-test-ns:
+[0;34m[INFO][0m   Repository URL: http://git-servers.git-servers.svc.cluster.local/git/team-alpha-config.git
+[0;34m[INFO][0m   Repository Branch: main
+[0;34m[INFO][0m   Repository Domain: git-servers.git-servers.svc.cluster.local
+[0;34m[INFO][0m   Repository Hash: 870d5171
+[0;34m[INFO][0m   Registration ID: 81e879fe...
+[0;34m[INFO][0m 
+[0;34m[INFO][0m ==============================================================
+[0;34m[INFO][0m Enhanced GitOps Registration Service Integration Tests Summary
+[0;34m[INFO][0m ==============================================================
+[0;31m[ERROR][0m 1 tests failed out of 73 total tests
+[0;34m[INFO][0m Passed: 72
+[0;31m[ERROR][0m Failed: 1

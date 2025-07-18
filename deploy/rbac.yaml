@@ -40,7 +40,8 @@ rules:
   resources: ["jobs", "cronjobs"]
   verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
 
-# Role and RoleBinding management within namespace (as specified in requirements)
+# Role and RoleBinding management within namespace
+# (as specified in requirements)
 - apiGroups: ["rbac.authorization.k8s.io"]
   resources: ["roles", "rolebindings"]
   verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
@@ -128,4 +129,4 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: gitops-registration-sa
-  namespace: konflux-gitops 
+  namespace: konflux-gitops

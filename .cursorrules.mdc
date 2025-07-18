@@ -1,0 +1,169 @@
+---
+alwaysApply: true
+---
+
+Keep git commit messages informative but succing. Overly verbose messages are not good.
+
+# Cursor Rules for GitOps Registration Service
+
+If the user is using Podman desktop in a VM (like with Mac or Windows) then you cannot reliably use a registry in Kind or load images into the Kind instance. KNative will alwayas try to resolve the image to a digest. In this case ASK THE USER to give you credentials to a registry (like quay.io) where you can store and retrieve built images for using with testing. This can be used with the IMAGE param for the integration-tests target of Make.
+
+Code without integration tests is not "production ready"
+Code must be passing 100% of all tests to be mergeable. anything less than 100% is not good enough.
+
+Your enthusiasm is exhausting. Do not say things like:
+* FANTASTIC SUCCESS! 
+* COMPLETE VICTORY
+* PRODUCTION-READY!
+
+You are nearly always wrong. Report FACTS and drop the hyperbole.
+
+
+## Git Repository Serving - CRITICAL RULES
+
+### 🚨 MANDATORY: Always Refer to TESTING.md
+
+Before making ANY changes to git repository serving configuration:
+
+1. **READ TESTING.md** - Section "Git Repository Serving for ArgoCD Integration"
+2. **UNDERSTAND** why certain configurations work and others don't
+3. **VERIFY** your changes don't break ArgoCD integration
+
+### ✅ ONLY Acceptable Git Server Configuration
+
+- **USE**: Apache HTTP Server + git-http-backend (Smart HTTP protocol)
+- **FILE**: `test/integration/smart-git-servers.yaml`
+- **VERIFIED**: Works with ArgoCD sync and git clone operations
+
+### ❌ FORBIDDEN Configurations
+
+- **NEVER** use nginx for git serving (breaks ArgoCD)
+- **NEVER** serve flat files with dot notation (info.refs vs info/refs)
+- **NEVER** implement custom git protocol responses
+- **NEVER** use simple HTTP servers without Smart HTTP protocol
+
+### Required Testing for Git Server Changes
+
+1. **Test git clone**: `git clone http://server/repo.git`
+2. **Test Smart HTTP**: Verify packet-line responses
+3. **Test ArgoCD sync**: Applications must reach "Synced" status
+4. **Run enhanced tests**: `./test/integration/run-enhanced-tests.sh`
+
+
+
+## General Development Guidelines
+
+### Go Code Style
+- Follow standard Go conventions
+- Use meaningful variable names
+- Add comments for complex logic
+- Include error handling
+
+### Testing Requirements
+- Write unit and integration tests for new functionality
+- Run integration tests before committing
+- Ensure all tests pass with timeout for ArgoCD sync
+- Test error scenarios
+
+### Kubernetes Resources
+- Use proper labels and annotations
+- Include resource limits and requests
+- Follow security best practices
+- Document any cluster-admin requirements
+
+### Documentation
+- Update README.md for user-facing changes
+- Update TESTING.md for test environment changes
+- Include code comments for complex algorithms
+- Document breaking changes clearly 
+
+
+## Using Podman and Kind
+
+If the user is using Podman desktop in a VM (like with Mac or Windows) then you cannot reliably use a registry in Kind or load images into the Kind instance. KNative will alwayas try to resolve the image to a digest. In this case ASK THE USER to give you credentials to a registry (like quay.io) where you can store and retrieve built images for using with testing. This can be used with the IMAGE param for the integration-tests target of Make.
+
+Code without integration tests is not "production ready"
+Code must be passing 100% of all tests to be mergeable. anything less than 100% is not good enough.
+
+
+## No Hyperbole
+
+Your enthusiasm is exhausting. Do not say things like:
+* FANTASTIC SUCCESS! 
+* COMPLETE VICTORY
+* PRODUCTION-READY!
+
+You are nearly always wrong when you say these things. Report FACTS and drop the hyperbole.
+
+
+## Git Repository Serving - CRITICAL RULES
+
+### 🚨 MANDATORY: Always Refer to TESTING.md
+
+Before making ANY changes to git repository serving configuration:
+
+1. **READ TESTING.md** - Section "Git Repository Serving for ArgoCD Integration"
+2. **UNDERSTAND** why certain configurations work and others don't
+3. **VERIFY** your changes don't break ArgoCD integration
+
+### ✅ ONLY Acceptable Git Server Configuration
+
+- **USE**: Apache HTTP Server + git-http-backend (Smart HTTP protocol)
+- **FILE**: `test/integration/smart-git-servers.yaml`
+- **VERIFIED**: Works with ArgoCD sync and git clone operations
+
+### ❌ FORBIDDEN Configurations
+
+- **NEVER** use nginx for git serving (breaks ArgoCD)
+- **NEVER** serve flat files with dot notation (info.refs vs info/refs)
+- **NEVER** implement custom git protocol responses
+- **NEVER** use simple HTTP servers without Smart HTTP protocol
+
+### Required Testing for Git Server Changes
+
+1. **Test git clone**: `git clone http://server/repo.git`
+2. **Test Smart HTTP**: Verify packet-line responses
+3. **Test ArgoCD sync**: Applications must reach "Synced" status
+4. **Run enhanced tests**: `./test/integration/run-enhanced-tests.sh`
+
+### Code Review Checklist
+
+- [ ] Reviewed TESTING.md git serving documentation
+- [ ] Uses approved Apache + git-http-backend configuration
+- [ ] Tested with actual git clone operations  
+- [ ] Verified ArgoCD can sync applications
+- [ ] No nginx-based git serving introduced
+- [ ] Proper git directory structure maintained
+
+### Emergency Rollback
+
+If git serving breaks:
+1. Immediately revert to `test/integration/smart-git-servers.yaml`
+2. Redeploy: `kubectl apply -f test/integration/smart-git-servers.yaml`
+3. Test ArgoCD sync before proceeding
+
+## General Development Guidelines
+
+### Go Code Style
+- Follow standard Go conventions
+- Use meaningful variable names
+- Add comments for complex logic
+- Include error handling
+
+### Testing Requirements
+- Write unit tests for new functionality
+- Run integration tests before committing
+- Ensure all tests pass with timeout for ArgoCD sync
+- Test error scenarios
+
+### Kubernetes Resources
+- Use proper labels and annotations
+- Include resource limits and requests
+- Follow security best practices
+- Document any cluster-admin requirements
+
+### Documentation
+- Update README.md for user-facing changes
+- Update TESTING.md for test environment changes
+- Include code comments for complex algorithms
+- Document breaking changes clearly 

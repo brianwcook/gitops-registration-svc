@@ -8,10 +8,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/konflux-ci/gitops-registration-service/internal/config"
 	"github.com/konflux-ci/gitops-registration-service/internal/server"
+	"github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -24,6 +23,11 @@ func main() {
 	cfg, err := config.Load()
 	if err != nil {
 		log.WithError(err).Fatal("Failed to load configuration")
+	}
+
+	// Validate impersonation configuration
+	if impersonationErr := cfg.ValidateImpersonationConfig(); impersonationErr != nil {
+		log.Fatalf("Invalid impersonation configuration: %v", impersonationErr)
 	}
 
 	// Initialize server

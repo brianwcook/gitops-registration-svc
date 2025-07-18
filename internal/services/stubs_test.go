@@ -4,12 +4,11 @@ import (
 	"context"
 	"testing"
 
+	"github.com/konflux-ci/gitops-registration-service/internal/config"
+	"github.com/konflux-ci/gitops-registration-service/internal/types"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/konflux-ci/gitops-registration-service/internal/config"
-	"github.com/konflux-ci/gitops-registration-service/internal/types"
 )
 
 func TestKubernetesServiceStub_HealthCheck(t *testing.T) {
@@ -493,4 +492,217 @@ func TestRegistrationControlServiceStub_GetRegistrationStatus_Disabled(t *testin
 	require.NoError(t, err)
 	assert.False(t, status.AllowNewNamespaces)
 	assert.Equal(t, "Registration status based on configuration", status.Message)
+}
+
+func TestStubConstructors_Coverage(t *testing.T) {
+	// Test all the constructor functions that are currently at 0% coverage
+	logger := logrus.New()
+	logger.SetLevel(logrus.FatalLevel)
+	cfg := &config.Config{}
+
+	t.Run("NewKubernetesService constructor", func(t *testing.T) {
+		service, err := NewKubernetesService(cfg, logger)
+		assert.NoError(t, err)
+		assert.NotNil(t, service)
+		assert.IsType(t, &kubernetesServiceStub{}, service)
+	})
+
+	t.Run("NewArgoCDService constructor", func(t *testing.T) {
+		service, err := NewArgoCDService(cfg, logger)
+		assert.NoError(t, err)
+		assert.NotNil(t, service)
+		assert.IsType(t, &argoCDServiceStub{}, service)
+	})
+
+	t.Run("NewAuthorizationService constructor", func(t *testing.T) {
+		// AuthorizationService needs a KubernetesService
+		k8sService, err := NewKubernetesService(cfg, logger)
+		require.NoError(t, err)
+
+		service := NewAuthorizationService(cfg, k8sService, logger)
+		assert.NotNil(t, service)
+		assert.IsType(t, &authorizationServiceStub{}, service)
+	})
+
+	t.Run("NewRegistrationControlService constructor", func(t *testing.T) {
+		service := NewRegistrationControlService(cfg, logger)
+		assert.NotNil(t, service)
+		assert.IsType(t, &registrationControlServiceStub{}, service)
+	})
+
+	t.Run("NewRegistrationService constructor", func(t *testing.T) {
+		// RegistrationService needs KubernetesService and ArgoCDService
+		k8sService, err := NewKubernetesService(cfg, logger)
+		require.NoError(t, err)
+
+		argoCDService, err := NewArgoCDService(cfg, logger)
+		require.NoError(t, err)
+
+		service := NewRegistrationService(cfg, k8sService, argoCDService, logger)
+		assert.NotNil(t, service)
+		assert.IsType(t, &registrationServiceStub{}, service)
+	})
+}
+
+func TestKubernetesServiceStub_UntestedMethods(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.FatalLevel)
+	cfg := &config.Config{}
+
+	service, err := NewKubernetesService(cfg, logger)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+
+	t.Run("CreateNamespaceWithMetadata", func(t *testing.T) {
+		labels := map[string]string{"app": "test"}
+		annotations := map[string]string{"description": "test"}
+		err := service.CreateNamespaceWithMetadata(ctx, "test-namespace", labels, annotations)
+		assert.NoError(t, err) // Stub should succeed
+	})
+
+	t.Run("UpdateNamespaceLabels", func(t *testing.T) {
+		labels := map[string]string{"updated": "true"}
+		err := service.UpdateNamespaceLabels(ctx, "test-namespace", labels)
+		assert.NoError(t, err) // Stub should succeed
+	})
+
+	t.Run("UpdateNamespaceMetadata", func(t *testing.T) {
+		labels := map[string]string{"app": "updated"}
+		annotations := map[string]string{"updated": "true"}
+		err := service.UpdateNamespaceMetadata(ctx, "test-namespace", labels, annotations)
+		assert.NoError(t, err) // Stub should succeed
+	})
+
+	t.Run("CreateServiceAccount", func(t *testing.T) {
+		err := service.CreateServiceAccount(ctx, "test-namespace", "test-sa")
+		assert.NoError(t, err) // Stub should succeed
+	})
+
+	t.Run("CreateRoleBinding", func(t *testing.T) {
+		err := service.CreateRoleBinding(ctx, "test-namespace", "test-binding", "test-role", "test-sa")
+		assert.NoError(t, err) // Stub should succeed
+	})
+
+	t.Run("CreateServiceAccountWithGenerateName", func(t *testing.T) {
+		name, err := service.CreateServiceAccountWithGenerateName(ctx, "test-namespace", "base-name")
+		assert.NoError(t, err)
+		assert.NotEmpty(t, name) // Stub should return a name
+	})
+
+	t.Run("CreateRoleBindingForServiceAccount", func(t *testing.T) {
+		err := service.CreateRoleBindingForServiceAccount(ctx, "test-namespace", "test-binding", "test-role", "test-sa")
+		assert.NoError(t, err) // Stub should succeed
+	})
+
+	t.Run("CheckAppProjectConflict", func(t *testing.T) {
+		conflicts, err := service.CheckAppProjectConflict(ctx, "test-hash")
+		assert.NoError(t, err)
+		assert.False(t, conflicts) // Stub should return no conflicts
+	})
+}
+
+func TestArgoCDServiceStub_UntestedMethods(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.FatalLevel)
+	cfg := &config.Config{}
+
+	service, err := NewArgoCDService(cfg, logger)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+
+	t.Run("DeleteAppProject", func(t *testing.T) {
+		err := service.DeleteAppProject(ctx, "test-project")
+		assert.NoError(t, err) // Stub should succeed
+	})
+
+	t.Run("DeleteApplication", func(t *testing.T) {
+		err := service.DeleteApplication(ctx, "test-app")
+		assert.NoError(t, err) // Stub should succeed
+	})
+
+	t.Run("convertResourceListToInterface", func(t *testing.T) {
+		// Test the utility function - check what type it actually expects
+		stub := &argoCDServiceStub{}
+		resources := []types.AppProjectResource{
+			{Group: "apps", Kind: "Deployment"},
+			{Group: "extensions", Kind: "Ingress"},
+		}
+		result := stub.convertResourceListToInterface(resources)
+		assert.NotNil(t, result)
+		assert.Len(t, result, 2)
+	})
+
+	t.Run("CheckAppProjectConflict", func(t *testing.T) {
+		conflicts, err := service.CheckAppProjectConflict(ctx, "test-hash")
+		assert.NoError(t, err)
+		assert.False(t, conflicts) // Stub should return no conflicts
+	})
+}
+
+func TestRegistrationServiceStub_UntestedMethods(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.FatalLevel)
+	cfg := &config.Config{}
+
+	// Create dependencies
+	k8sService, err := NewKubernetesService(cfg, logger)
+	require.NoError(t, err)
+
+	argoCDService, err := NewArgoCDService(cfg, logger)
+	require.NoError(t, err)
+
+	service := NewRegistrationService(cfg, k8sService, argoCDService, logger)
+	ctx := context.Background()
+
+	t.Run("ValidateRegistration", func(t *testing.T) {
+		request := &types.RegistrationRequest{
+			Namespace: "test-namespace",
+			Repository: types.Repository{
+				URL: "https://github.com/test/repo",
+			},
+		}
+
+		err := service.ValidateRegistration(ctx, request)
+		assert.NoError(t, err) // Stub should succeed
+	})
+
+	t.Run("ValidateExistingNamespaceRequest", func(t *testing.T) {
+		request := &types.ExistingNamespaceRequest{
+			ExistingNamespace: "test-namespace",
+			Repository: types.Repository{
+				URL: "https://github.com/test/repo",
+			},
+		}
+
+		err := service.ValidateExistingNamespaceRequest(ctx, request)
+		assert.NoError(t, err) // Stub should succeed
+	})
+}
+
+func TestStubsUtilityFunctions_Coverage(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.FatalLevel)
+	cfg := &config.Config{}
+
+	t.Run("Utility functions exist and work", func(t *testing.T) {
+		// Test that we can create all stubs and they have the expected methods
+		k8sStub, err := NewKubernetesService(cfg, logger)
+		require.NoError(t, err)
+
+		argoCDStub, err := NewArgoCDService(cfg, logger)
+		require.NoError(t, err)
+
+		authStub := NewAuthorizationService(cfg, k8sStub, logger)
+		regControlStub := NewRegistrationControlService(cfg, logger)
+		regStub := NewRegistrationService(cfg, k8sStub, argoCDStub, logger)
+
+		// Verify all services implement the expected interfaces
+		assert.Implements(t, (*KubernetesService)(nil), k8sStub)
+		assert.Implements(t, (*ArgoCDService)(nil), argoCDStub)
+		assert.Implements(t, (*AuthorizationService)(nil), authStub)
+		assert.Implements(t, (*RegistrationControlService)(nil), regControlStub)
+		assert.Implements(t, (*RegistrationService)(nil), regStub)
+	})
 }

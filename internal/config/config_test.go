@@ -98,7 +98,7 @@ authorization:
 
 	tmpDir := t.TempDir()
 	configFile := filepath.Join(tmpDir, "config.yaml")
-	require.NoError(t, os.WriteFile(configFile, []byte(configContent), 0644))
+	require.NoError(t, os.WriteFile(configFile, []byte(configContent), 0o644))
 
 	os.Setenv("CONFIG_PATH", configFile)
 	defer os.Unsetenv("CONFIG_PATH")
@@ -131,7 +131,7 @@ argocd:
 
 	tmpDir := t.TempDir()
 	configFile := filepath.Join(tmpDir, "config.yaml")
-	require.NoError(t, os.WriteFile(configFile, []byte(configContent), 0644))
+	require.NoError(t, os.WriteFile(configFile, []byte(configContent), 0o644))
 
 	// Set environment variables that should override file
 	os.Setenv("CONFIG_PATH", configFile)
@@ -153,7 +153,7 @@ func TestLoad_InvalidConfigFile(t *testing.T) {
 	// Create invalid YAML file
 	tmpDir := t.TempDir()
 	configFile := filepath.Join(tmpDir, "invalid.yaml")
-	require.NoError(t, os.WriteFile(configFile, []byte("invalid: yaml: content: ["), 0644))
+	require.NoError(t, os.WriteFile(configFile, []byte("invalid: yaml: content: ["), 0o644))
 
 	os.Setenv("CONFIG_PATH", configFile)
 	defer os.Unsetenv("CONFIG_PATH")
@@ -286,7 +286,7 @@ security:
 
 	tmpDir := t.TempDir()
 	configFile := filepath.Join(tmpDir, "config.yaml")
-	require.NoError(t, os.WriteFile(configFile, []byte(configContentAllowList), 0644))
+	require.NoError(t, os.WriteFile(configFile, []byte(configContentAllowList), 0o644))
 
 	os.Setenv("CONFIG_PATH", configFile)
 	defer os.Unsetenv("CONFIG_PATH")
@@ -318,7 +318,7 @@ security:
 
 	tmpDir := t.TempDir()
 	configFile := filepath.Join(tmpDir, "config.yaml")
-	require.NoError(t, os.WriteFile(configFile, []byte(configContent), 0644))
+	require.NoError(t, os.WriteFile(configFile, []byte(configContent), 0o644))
 
 	os.Setenv("CONFIG_PATH", configFile)
 	defer os.Unsetenv("CONFIG_PATH")
@@ -339,7 +339,7 @@ server:
 
 	tmpDir := t.TempDir()
 	configFile := filepath.Join(tmpDir, "test.yaml")
-	require.NoError(t, os.WriteFile(configFile, []byte(configContent), 0644))
+	require.NoError(t, os.WriteFile(configFile, []byte(configContent), 0o644))
 
 	err := loadFromFile(cfg, configFile)
 	require.NoError(t, err)
@@ -360,10 +360,200 @@ func TestLoadFromFile_InvalidYAML(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	configFile := filepath.Join(tmpDir, "invalid.yaml")
-	require.NoError(t, os.WriteFile(configFile, []byte("invalid: yaml: ["), 0644))
+	require.NoError(t, os.WriteFile(configFile, []byte("invalid: yaml: ["), 0o644))
 
 	err := loadFromFile(cfg, configFile)
 	assert.Error(t, err)
+}
+
+func TestConfig_ValidateImpersonationConfig(t *testing.T) {
+	tests := []struct {
+		name        string
+		config      *Config
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name: "Impersonation disabled - should pass",
+			config: &Config{
+				Security: SecurityConfig{
+					Impersonation: ImpersonationConfig{
+						Enabled: false,
+						// Other fields don't matter when disabled
+					},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "Impersonation enabled with valid config",
+			config: &Config{
+				Security: SecurityConfig{
+					Impersonation: ImpersonationConfig{
+						Enabled:                true,
+						ClusterRole:            "gitops-role",
+						ServiceAccountBaseName: "gitops-sa",
+					},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "Impersonation enabled but missing ClusterRole",
+			config: &Config{
+				Security: SecurityConfig{
+					Impersonation: ImpersonationConfig{
+						Enabled:                true,
+						ClusterRole:            "",
+						ServiceAccountBaseName: "gitops-sa",
+					},
+				},
+			},
+			expectError: true,
+			errorMsg:    "impersonation.clusterRole must be set when impersonation is enabled",
+		},
+		{
+			name: "Impersonation enabled but missing ServiceAccountBaseName",
+			config: &Config{
+				Security: SecurityConfig{
+					Impersonation: ImpersonationConfig{
+						Enabled:                true,
+						ClusterRole:            "gitops-role",
+						ServiceAccountBaseName: "",
+					},
+				},
+			},
+			expectError: true,
+			errorMsg:    "impersonation.serviceAccountBaseName cannot be empty",
+		},
+		{
+			name: "Impersonation enabled but both fields missing",
+			config: &Config{
+				Security: SecurityConfig{
+					Impersonation: ImpersonationConfig{
+						Enabled:                true,
+						ClusterRole:            "",
+						ServiceAccountBaseName: "",
+					},
+				},
+			},
+			expectError: true,
+			errorMsg:    "impersonation.clusterRole must be set when impersonation is enabled",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.config.ValidateImpersonationConfig()
+
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errorMsg)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestConfig_Load_EdgeCases(t *testing.T) {
+	// Test Load function with edge cases and error scenarios
+
+	t.Run("Load with CONFIG_PATH not set", func(t *testing.T) {
+		// Clear any existing CONFIG_PATH
+		originalPath := os.Getenv("CONFIG_PATH")
+		os.Unsetenv("CONFIG_PATH")
+		defer func() {
+			if originalPath != "" {
+				os.Setenv("CONFIG_PATH", originalPath)
+			}
+		}()
+
+		cfg, err := Load()
+
+		// Should return default config when no file is specified
+		assert.NoError(t, err)
+		assert.NotNil(t, cfg)
+		assert.Equal(t, 8080, cfg.Server.Port) // Default port
+	})
+
+	t.Run("Load with invalid config file path", func(t *testing.T) {
+		// Set CONFIG_PATH to invalid file
+		os.Setenv("CONFIG_PATH", "non-existent-file.yaml")
+		defer os.Unsetenv("CONFIG_PATH")
+
+		cfg, err := Load()
+
+		// Should return an error for non-existent file
+		assert.Error(t, err)
+		assert.Nil(t, cfg)
+		assert.Contains(t, err.Error(), "failed to load config file")
+	})
+
+	t.Run("Load with invalid YAML file", func(t *testing.T) {
+		// Create a temporary invalid YAML file
+		tmpFile, err := os.CreateTemp("", "invalid-*.yaml")
+		require.NoError(t, err)
+		defer os.Remove(tmpFile.Name())
+
+		// Write invalid YAML
+		_, err = tmpFile.WriteString("invalid: yaml: content: [unclosed")
+		require.NoError(t, err)
+		tmpFile.Close()
+
+		// Set CONFIG_PATH to the invalid file
+		os.Setenv("CONFIG_PATH", tmpFile.Name())
+		defer os.Unsetenv("CONFIG_PATH")
+
+		cfg, err := Load()
+
+		// Should return an error for invalid YAML
+		assert.Error(t, err)
+		assert.Nil(t, cfg)
+		assert.Contains(t, err.Error(), "failed to load config file")
+	})
+}
+
+func TestConfig_Comprehensive_Validation(t *testing.T) {
+	t.Run("Complete valid config with all features", func(t *testing.T) {
+		cfg := &Config{
+			Server: ServerConfig{
+				Port:    8080,
+				Timeout: "30s",
+			},
+			ArgoCD: ArgoCDConfig{
+				Namespace: "argocd",
+			},
+			Security: SecurityConfig{
+				Impersonation: ImpersonationConfig{
+					Enabled:                true,
+					ClusterRole:            "gitops-role",
+					ServiceAccountBaseName: "gitops-sa",
+				},
+			},
+		}
+
+		// Test impersonation validation
+		err := cfg.ValidateImpersonationConfig()
+		assert.NoError(t, err)
+
+		// Test basic structure
+		assert.Equal(t, 8080, cfg.Server.Port)
+		assert.Equal(t, "argocd", cfg.ArgoCD.Namespace)
+		assert.True(t, cfg.Security.Impersonation.Enabled)
+	})
+
+	t.Run("Config with default values applied", func(t *testing.T) {
+		// Test that getDefaultConfig provides reasonable defaults
+		cfg := getDefaultConfig()
+
+		assert.Equal(t, 8080, cfg.Server.Port)
+		assert.Equal(t, "30s", cfg.Server.Timeout)
+		assert.Equal(t, "argocd", cfg.ArgoCD.Namespace)
+		assert.False(t, cfg.Security.Impersonation.Enabled)
+		assert.Equal(t, "gitops-sa", cfg.Security.Impersonation.ServiceAccountBaseName)
+		assert.Equal(t, "", cfg.Security.Impersonation.ClusterRole) // Empty by default
+	})
 }
 
 // Helper function to clear all environment variables used by the config

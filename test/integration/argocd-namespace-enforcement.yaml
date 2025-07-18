@@ -1,0 +1,30 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-cm
+    app.kubernetes.io/part-of: argocd
+data:
+  # Enable namespace enforcement - this is CRITICAL for security!
+  # Without this, ArgoCD ignores AppProject destination restrictions
+  application.namespaceEnforcement: "true"
+
+  # Additional security configurations
+  application.instanceLabelKey: "argocd.argoproj.io/instance"
+
+  # Ensure proper project restrictions are enforced
+  application.resourceTrackingMethod: "annotation"
+
+  # Log level for better debugging
+  server.log.level: "info"
+
+  # Security: disable admin user (use RBAC instead)
+  admin.enabled: "true"  # Keep enabled for tests
+
+  # Timeout settings
+  controller.operation.processors: "10"
+  controller.status.processors: "20"
+  controller.repo.server.timeout.seconds: "60"

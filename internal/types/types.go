@@ -63,21 +63,30 @@ type UserInfo struct {
 
 // AppProject represents an ArgoCD AppProject configuration
 type AppProject struct {
-	Name                       string                  `json:"name"`
-	Namespace                  string                  `json:"namespace"`
-	SourceRepos                []string                `json:"sourceRepos"`
-	Destinations               []AppProjectDestination `json:"destinations"`
-	Roles                      []AppProjectRole        `json:"roles,omitempty"`
-	ClusterResourceWhitelist   []AppProjectResource    `json:"clusterResourceWhitelist,omitempty"`
-	NamespaceResourceWhitelist []AppProjectResource    `json:"namespaceResourceWhitelist,omitempty"`
-	ClusterResourceBlacklist   []AppProjectResource    `json:"clusterResourceBlacklist,omitempty"`
-	NamespaceResourceBlacklist []AppProjectResource    `json:"namespaceResourceBlacklist,omitempty"`
+	Name                       string                                `json:"name"`
+	Namespace                  string                                `json:"namespace"`
+	Labels                     map[string]string                     `json:"labels,omitempty"`
+	SourceRepos                []string                              `json:"sourceRepos"`
+	Destinations               []AppProjectDestination               `json:"destinations"`
+	DestinationServiceAccounts []AppProjectDestinationServiceAccount `json:"destinationServiceAccounts,omitempty"`
+	Roles                      []AppProjectRole                      `json:"roles,omitempty"`
+	ClusterResourceWhitelist   []AppProjectResource                  `json:"clusterResourceWhitelist,omitempty"`
+	NamespaceResourceWhitelist []AppProjectResource                  `json:"namespaceResourceWhitelist,omitempty"`
+	ClusterResourceBlacklist   []AppProjectResource                  `json:"clusterResourceBlacklist,omitempty"`
+	NamespaceResourceBlacklist []AppProjectResource                  `json:"namespaceResourceBlacklist,omitempty"`
 }
 
 // AppProjectDestination represents allowed destinations for an AppProject
 type AppProjectDestination struct {
 	Server    string `json:"server"`
 	Namespace string `json:"namespace"`
+}
+
+// AppProjectDestinationServiceAccount represents service account mapping for impersonation
+type AppProjectDestinationServiceAccount struct {
+	Server                string `json:"server"`
+	Namespace             string `json:"namespace"`
+	DefaultServiceAccount string `json:"defaultServiceAccount"`
 }
 
 // AppProjectRole represents a role within an AppProject

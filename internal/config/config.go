@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -41,11 +42,23 @@ type KubernetesConfig struct {
 
 // SecurityConfig holds security-related configuration
 type SecurityConfig struct {
-	AllowedResourceTypes              []string                     `yaml:"allowedResourceTypes"`
-	ResourceAllowList                 []ServiceResourceRestriction `yaml:"resourceAllowList,omitempty"`
-	ResourceDenyList                  []ServiceResourceRestriction `yaml:"resourceDenyList,omitempty"`
-	RequireAppProjectPerTenant        bool                         `yaml:"requireAppProjectPerTenant"`
-	EnableServiceAccountImpersonation bool                         `yaml:"enableServiceAccountImpersonation"`
+	AllowedResourceTypes       []string                     `yaml:"allowedResourceTypes"`
+	ResourceAllowList          []ServiceResourceRestriction `yaml:"resourceAllowList,omitempty"`
+	ResourceDenyList           []ServiceResourceRestriction `yaml:"resourceDenyList,omitempty"`
+	RequireAppProjectPerTenant bool                         `yaml:"requireAppProjectPerTenant"`
+	// Deprecated: Use Impersonation.Enabled instead
+	EnableServiceAccountImpersonation bool `yaml:"enableServiceAccountImpersonation"`
+	// New impersonation configuration
+	Impersonation ImpersonationConfig `yaml:"impersonation"`
+}
+
+// ImpersonationConfig holds ArgoCD impersonation configuration
+type ImpersonationConfig struct {
+	Enabled                bool   `yaml:"enabled"`
+	ClusterRole            string `yaml:"clusterRole"`
+	ServiceAccountBaseName string `yaml:"serviceAccountBaseName"`
+	ValidatePermissions    bool   `yaml:"validatePermissions"`
+	AutoCleanup            bool   `yaml:"autoCleanup"`
 }
 
 // ServiceResourceRestriction represents a resource type restriction for service-level configuration
@@ -88,7 +101,29 @@ type CapacityLimits struct {
 // Load reads configuration from environment variables and config file
 func Load() (*Config, error) {
 	// Set defaults
-	cfg := &Config{
+	cfg := getDefaultConfig()
+
+	// Load from config file if specified (before environment variable overrides)
+	if configPath := os.Getenv("CONFIG_PATH"); configPath != "" {
+		if err := loadFromFile(cfg, configPath); err != nil {
+			return nil, fmt.Errorf("failed to load config file %s: %w", configPath, err)
+		}
+	}
+
+	// Override with environment variables (these take precedence over file config)
+	applyEnvironmentOverrides(cfg)
+
+	// Validate resource restrictions
+	if err := validateResourceRestrictions(cfg.Security.ResourceAllowList, cfg.Security.ResourceDenyList); err != nil {
+		return nil, fmt.Errorf("invalid resource restrictions configuration: %w", err)
+	}
+
+	return cfg, nil
+}
+
+// getDefaultConfig returns a Config with default values
+func getDefaultConfig() *Config {
+	return &Config{
 		Server: ServerConfig{
 			Port:    8080,
 			Timeout: "30s",
@@ -110,6 +145,13 @@ func Load() (*Config, error) {
 			},
 			RequireAppProjectPerTenant:        true,
 			EnableServiceAccountImpersonation: true,
+			Impersonation: ImpersonationConfig{
+				Enabled:                false, // Default to disabled for security
+				ClusterRole:            "",    // Must be explicitly set when enabled
+				ServiceAccountBaseName: "gitops-sa",
+				ValidatePermissions:    true,
+				AutoCleanup:            true,
+			},
 		},
 		Registration: RegistrationConfig{
 			AllowNewNamespaces: true,
@@ -130,15 +172,10 @@ func Load() (*Config, error) {
 			},
 		},
 	}
+}
 
-	// Load from config file if specified (before environment variable overrides)
-	if configPath := os.Getenv("CONFIG_PATH"); configPath != "" {
-		if err := loadFromFile(cfg, configPath); err != nil {
-			return nil, fmt.Errorf("failed to load config file %s: %w", configPath, err)
-		}
-	}
-
-	// Override with environment variables (these take precedence over file config)
+// applyEnvironmentOverrides applies environment variable overrides to the config
+func applyEnvironmentOverrides(cfg *Config) {
 	if port := os.Getenv("PORT"); port != "" {
 		if p, err := strconv.Atoi(port); err == nil {
 			cfg.Server.Port = p
@@ -174,18 +211,24 @@ func Load() (*Config, error) {
 	if requiredRole := os.Getenv("AUTHORIZATION_REQUIRED_ROLE"); requiredRole != "" {
 		cfg.Authorization.RequiredRole = requiredRole
 	}
-
-	// Validate resource restrictions
-	if err := validateResourceRestrictions(cfg.Security.ResourceAllowList, cfg.Security.ResourceDenyList); err != nil {
-		return nil, fmt.Errorf("invalid resource restrictions configuration: %w", err)
-	}
-
-	return cfg, nil
 }
 
 // loadFromFile loads configuration from a YAML file
 func loadFromFile(cfg *Config, path string) error {
-	data, err := os.ReadFile(path)
+	// Validate path to prevent file inclusion vulnerabilities
+	cleanPath := filepath.Clean(path)
+
+	// Check for directory traversal attempts
+	if strings.Contains(cleanPath, "..") {
+		return fmt.Errorf("config path contains directory traversal: %s", path)
+	}
+
+	// Validate file extension
+	if ext := filepath.Ext(cleanPath); ext != ".yaml" && ext != ".yml" {
+		return fmt.Errorf("config file must be a YAML file (.yaml or .yml): %s", path)
+	}
+
+	data, err := os.ReadFile(cleanPath) // #nosec G304 -- path is validated above
 	if err != nil {
 		return err
 	}
@@ -214,6 +257,23 @@ func validateResourceRestrictions(allowList, denyList []ServiceResourceRestricti
 			return fmt.Errorf("resourceDenyList[%d]: kind is required", i)
 		}
 		// Note: group can be empty for core resources, so we don't validate it
+	}
+
+	return nil
+}
+
+// ValidateImpersonationConfig validates the impersonation configuration
+func (c *Config) ValidateImpersonationConfig() error {
+	if !c.Security.Impersonation.Enabled {
+		return nil // No validation needed if disabled
+	}
+
+	if c.Security.Impersonation.ClusterRole == "" {
+		return fmt.Errorf("impersonation.clusterRole must be set when impersonation is enabled")
+	}
+
+	if c.Security.Impersonation.ServiceAccountBaseName == "" {
+		return fmt.Errorf("impersonation.serviceAccountBaseName cannot be empty")
 	}
 
 	return nil
