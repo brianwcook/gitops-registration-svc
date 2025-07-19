@@ -8,6 +8,7 @@ This service implements the GitOps Registration Service as outlined in [ADR 47: 
 
 - **Secure GitOps**: 1:1 mapping between GitOps repositories and Kubernetes namespaces
 - **ArgoCD Integration**: Automated AppProject and Application creation for continuous deployment
+- **Enhanced Security**: ArgoCD impersonation with dedicated service accounts per tenant
 - **Resource Restrictions**: Configurable allow/deny lists for controlling which Kubernetes resources can be synced
 - **Authorization Enforcement**: RBAC-based validation using SubjectAccessReview API (FR-008)
 - **Registration Control**: Simple configuration to enable/disable new namespace registrations
@@ -24,6 +25,14 @@ This service implements the GitOps Registration Service as outlined in [ADR 47: 
 - [x] Resource sync restrictions with allow/deny lists
 - [x] RESTful API with OpenAPI 3.0 specification
 - [x] Health checks and metrics endpoints
+
+### ✅ Enhanced Security (ArgoCD Impersonation)
+- [x] **Service Account Isolation** - dedicated service accounts per tenant namespace
+- [x] **Least Privilege** - minimal required permissions via ClusterRole validation
+- [x] **Repository Conflict Detection** - prevents multiple registrations of same repository
+- [x] **Startup Validation** - ClusterRole security analysis with warnings
+- [x] **Atomic Operations** - automatic cleanup on failures
+- [x] **Cross-tenant Prevention** - service accounts cannot access other tenant namespaces
 
 ### ✅ FR-008: Existing Namespace GitOps Conversion
 - [x] Users with `konflux-admin-user-actions` role can register existing namespaces
@@ -90,7 +99,7 @@ GitOps Registration Service - Full Integration Test
 [SUCCESS] KIND cluster created successfully!
 [SUCCESS] Knative installed and ready
 [SUCCESS] ArgoCD installed and ready  
-[SUCCESS] Gitea installed with test repositories
+[SUCCESS] Smart HTTP Git servers installed with test repositories
 [INFO] Deploying GitOps registration service...
 [SUCCESS] Service deployed successfully!
 [INFO] Running enhanced integration tests...
@@ -98,11 +107,10 @@ GitOps Registration Service - Full Integration Test
 [SUCCESS] ✓ POST /api/v1/registrations returned 201 as expected
 [SUCCESS] ✓ Namespace team-alpha was created
 [SUCCESS] ✓ ArgoCD Application team-alpha-app was created
-[SUCCESS] ✓ ArgoCD sync status: Synced, Health: Healthy
-[SUCCESS] ✓ Real workloads deployed: 2/2 pods running
-==========================================
-✅ Integration tests completed successfully!
-==========================================
+[SUCCESS] ✓ Repository metadata verification working
+[SUCCESS] ✓ Impersonation functionality working
+[SUCCESS] ✓ Service account security isolation working
+[SUCCESS] All tests passed! (71/71)
 ```
 
 ## Architecture
@@ -331,24 +339,35 @@ The service is configured through environment variables and/or YAML configuratio
 ### Environment Variables
 - `PORT` - HTTP server port (default: 8080)
 - `CONFIG_PATH` - Path to YAML configuration file
-- `ARGOCD_SERVER` - ArgoCD server endpoint
+- `ARGOCD_SERVER` - ArgoCD server URL
 - `ARGOCD_NAMESPACE` - ArgoCD namespace (default: argocd)
-- `ALLOWED_RESOURCE_TYPES` - Comma-separated list of allowed resource types
-- `ALLOW_NEW_NAMESPACES` - Enable new namespace registrations (default: true)
-- `AUTHORIZATION_REQUIRED_ROLE` - Required role for existing namespace registration
+- `ALLOW_NEW_NAMESPACES` - Enable/disable new registrations (default: true)
 
 ### YAML Configuration Example
+
 ```yaml
 server:
   port: 8080
-  timeout: 30s
+  timeout: "30s"
 
 argocd:
   server: "argocd-server.argocd.svc.cluster.local"
   namespace: "argocd"
   grpc: true
 
+kubernetes:
+  namespace: "gitops-registration-system"
+
 security:
+  # ArgoCD Impersonation (Enhanced Security)
+  impersonation:
+    enabled: false                          # Enable service account impersonation
+    clusterRole: "gitops-deployer"          # ClusterRole to bind to tenant service accounts
+    serviceAccountBaseName: "gitops-sa"     # Base name for generated service accounts
+    validatePermissions: true               # Validate ClusterRole on startup
+    autoCleanup: true                       # Clean up resources when namespaces are deleted
+
+  # Resource Restrictions (Legacy approach - use impersonation instead)
   allowedResourceTypes:
   - jobs
   - cronjobs
@@ -363,6 +382,164 @@ authorization:
   enableSubjectAccessReview: true
   auditFailedAttempts: true
 ```
+
+## ArgoCD Impersonation (Enhanced Security)
+
+The service supports ArgoCD's impersonation feature to provide enhanced security through service account isolation. When enabled, each tenant gets a dedicated service account with limited permissions instead of using a single powerful service account.
+
+### Overview
+
+**Traditional Approach (Insecure)**:
+- Single service account with broad cluster permissions
+- All tenants share the same service account
+- Risk of privilege escalation and cross-tenant access
+
+**Impersonation Approach (Secure)**:
+- Each tenant gets a dedicated service account in their namespace
+- Service accounts have minimal required permissions
+- Complete tenant isolation and least privilege principles
+- ArgoCD uses different service accounts for each tenant
+
+### Configuration
+
+#### Enable Impersonation
+
+```yaml
+security:
+  impersonation:
+    enabled: true
+    clusterRole: "gitops-deployer"
+    serviceAccountBaseName: "gitops-sa"
+    validatePermissions: true
+    autoCleanup: true
+```
+
+#### Create ClusterRole
+
+Create a ClusterRole with minimal required permissions:
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: gitops-deployer
+rules:
+# Allow managing common GitOps resources
+- apiGroups: [""]
+  resources: ["secrets", "configmaps", "services"]
+  verbs: ["create", "get", "list", "update", "patch", "delete"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["create", "get", "list", "update", "patch", "delete"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["ingresses"]
+  verbs: ["create", "get", "list", "update", "patch", "delete"]
+# Intentionally exclude cluster-scoped resources and dangerous permissions
+```
+
+#### Enable ArgoCD Impersonation
+
+Configure ArgoCD to support impersonation:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: argocd
+data:
+  # Enable impersonation support
+  application.sync.impersonation.enabled: "true"
+  # Enable namespace enforcement (REQUIRED)
+  application.namespaceEnforcement: "true"
+```
+
+### How It Works
+
+1. **Registration Request**: User registers a GitOps repository for namespace `my-app`
+
+2. **Service Account Creation**: Service creates:
+   - Namespace: `my-app`
+   - ServiceAccount: `gitops-sa-abc123` (generated name) in `my-app` namespace
+   - RoleBinding: Binds `gitops-deployer` ClusterRole to the ServiceAccount
+
+3. **AppProject Configuration**: AppProject includes impersonation settings:
+   ```yaml
+   apiVersion: argoproj.io/v1alpha1
+   kind: AppProject
+   metadata:
+     name: my-app
+     namespace: argocd
+   spec:
+     destinationServiceAccounts:
+     - server: https://kubernetes.default.svc
+       namespace: my-app
+       defaultServiceAccount: gitops-sa-abc123
+     destinations:
+     - namespace: my-app
+       server: https://kubernetes.default.svc
+   ```
+
+4. **ArgoCD Sync**: ArgoCD uses `my-app/gitops-sa-abc123` for sync operations instead of its own service account
+
+### Security Benefits
+
+✅ **Namespace Isolation**: Each tenant isolated in their own namespace with dedicated service account  
+✅ **Least Privilege**: Service accounts have minimal required permissions defined by ClusterRole  
+✅ **No Cross-tenant Access**: Service accounts cannot access resources in other tenant namespaces  
+✅ **Repository Conflicts**: Prevents multiple registrations of the same repository  
+✅ **ArgoCD Separation**: ArgoCD control plane separated from tenant sync operations  
+✅ **Audit Trail**: Clear mapping of service accounts to tenant namespaces  
+
+### Repository Conflict Detection
+
+When impersonation is enabled, the service prevents multiple registrations of the same repository:
+
+```bash
+# First registration succeeds
+curl -X POST /api/v1/registrations \
+  -d '{"namespace": "team-a", "repository": {"url": "https://github.com/team/config"}}'
+# → 201 Created
+
+# Second registration of same repository fails
+curl -X POST /api/v1/registrations \
+  -d '{"namespace": "team-b", "repository": {"url": "https://github.com/team/config"}}'
+# → 409 Conflict: repository already registered
+```
+
+### Startup Validation
+
+When impersonation is enabled, the service validates the ClusterRole on startup:
+
+```bash
+[INFO] Impersonation is enabled, validating ClusterRole: gitops-deployer
+[WARN] ClusterRole gitops-deployer security warnings:
+[WARN]   - ClusterRole can modify cluster-scoped resource: nodes
+[INFO] ClusterRole gitops-deployer validated successfully for impersonation
+```
+
+**Security warnings are logged for**:
+- ClusterRoles with `cluster-admin` level permissions
+- Permissions that span namespaces (cluster-wide list/watch)
+- Ability to modify cluster-scoped resources
+
+### Error Handling
+
+**Invalid ClusterRole**: Service logs warnings but continues to operate
+**Service Account Creation Failure**: Namespace is cleaned up atomically
+**RoleBinding Creation Failure**: Service account and namespace are cleaned up
+
+### Migration Guide
+
+**From Legacy to Impersonation**:
+
+1. **Create ClusterRole** with appropriate permissions
+2. **Enable ArgoCD impersonation** in `argocd-cm` ConfigMap
+3. **Update service configuration** to enable impersonation
+4. **Test with new registrations** - existing registrations continue to work
+5. **Monitor logs** for security warnings about ClusterRole permissions
+
+**Backward Compatibility**: When `impersonation.enabled: false` (default), the service behaves exactly as before.
 
 ### Registration Control
 
