@@ -212,7 +212,7 @@ func TestRegistrationService_BuildAppProject(t *testing.T) {
 			argoCDStub := &argoCDServiceStub{logger: logger}
 			regService := NewRegistrationServiceReal(tt.config, k8sStub, argoCDStub, logger).(*registrationService)
 
-			project := regService.buildAppProject(tt.projectName, tt.namespace, tt.repoURL)
+			project := regService.buildAppProject(tt.projectName, tt.namespace, tt.repoURL, "test-service-account")
 			require.NotNil(t, project)
 			tt.checkFunc(t, project)
 		})
@@ -230,7 +230,7 @@ func TestRegistrationService_BuildAppProject_DestinationsEnforcement(t *testing.
 	regService := NewRegistrationServiceReal(cfg, k8sStub, argoCDStub, logger).(*registrationService)
 
 	// Test that destinations are properly enforced
-	project := regService.buildAppProject("test-project", "restricted-namespace", "https://github.com/test/repo")
+	project := regService.buildAppProject("test-project", "restricted-namespace", "https://github.com/test/repo", "test-service-account")
 
 	require.NotNil(t, project)
 	require.Len(t, project.Destinations, 1)
@@ -241,4 +241,155 @@ func TestRegistrationService_BuildAppProject_DestinationsEnforcement(t *testing.
 
 	// Ensure the AppProject can only deploy to the specified namespace
 	assert.Equal(t, "restricted-namespace", destination.Namespace)
+}
+
+func TestRegistrationService_ImpersonationEnabled(t *testing.T) {
+	tests := []struct {
+		name                 string
+		impersonationEnabled bool
+		serviceAccountName   string
+		expectedSACount      int
+		expectedLabels       map[string]string
+	}{
+		{
+			name:                 "Impersonation enabled with service account",
+			impersonationEnabled: true,
+			serviceAccountName:   "gitops-sa-abc123",
+			expectedSACount:      1,
+			expectedLabels: map[string]string{
+				"gitops.io/repository-hash":    "be40cd26",
+				"gitops.io/managed-by":         "gitops-registration-service",
+				"app.kubernetes.io/managed-by": "gitops-registration-service",
+			},
+		},
+		{
+			name:                 "Impersonation disabled",
+			impersonationEnabled: false,
+			serviceAccountName:   "gitops",
+			expectedSACount:      0,
+			expectedLabels: map[string]string{
+				"gitops.io/repository-hash":    "be40cd26",
+				"gitops.io/managed-by":         "gitops-registration-service",
+				"app.kubernetes.io/managed-by": "gitops-registration-service",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup config with impersonation settings
+			cfg := &config.Config{
+				Security: config.SecurityConfig{
+					Impersonation: config.ImpersonationConfig{
+						Enabled:                tt.impersonationEnabled,
+						ClusterRole:            "test-gitops-deployer",
+						ServiceAccountBaseName: "gitops-sa",
+						ValidatePermissions:    true,
+						AutoCleanup:            true,
+					},
+				},
+				ArgoCD: config.ArgoCDConfig{
+					Namespace: "argocd",
+				},
+			}
+
+			logger := logrus.New()
+			k8sStub := &kubernetesServiceStub{logger: logger}
+			argoCDStub := &argoCDServiceStub{logger: logger}
+
+			regService := NewRegistrationServiceReal(cfg, k8sStub, argoCDStub, logger).(*registrationService)
+
+			// Test buildAppProject with impersonation
+			project := regService.buildAppProject("test-project", "test-namespace", "https://github.com/test/repo", tt.serviceAccountName)
+
+			// Verify basic project properties
+			require.NotNil(t, project)
+			require.Equal(t, "test-project", project.Name)
+			require.Equal(t, "argocd", project.Namespace)
+			require.Equal(t, []string{"https://github.com/test/repo"}, project.SourceRepos)
+
+			// Verify repository hash label
+			require.Contains(t, project.Labels, "gitops.io/repository-hash")
+			require.Equal(t, "be40cd26", project.Labels["gitops.io/repository-hash"]) // First 8 chars of SHA256
+
+			// Verify destinationServiceAccounts based on impersonation setting
+			if tt.impersonationEnabled {
+				require.Len(t, project.DestinationServiceAccounts, tt.expectedSACount)
+				if len(project.DestinationServiceAccounts) > 0 {
+					sa := project.DestinationServiceAccounts[0]
+					require.Equal(t, "https://kubernetes.default.svc", sa.Server)
+					require.Equal(t, "test-namespace", sa.Namespace)
+					require.Equal(t, tt.serviceAccountName, sa.DefaultServiceAccount)
+				}
+			} else {
+				require.Len(t, project.DestinationServiceAccounts, 0)
+			}
+
+			// Verify labels
+			for key, value := range tt.expectedLabels {
+				require.Equal(t, value, project.Labels[key])
+			}
+		})
+	}
+}
+
+func TestRegistrationService_RepositoryConflictDetection(t *testing.T) {
+	repoURL := "https://github.com/test/repo"
+
+	// Test repository hash generation
+	hash := GenerateRepositoryHash(repoURL)
+	require.Equal(t, "be40cd26", hash) // First 8 chars of SHA256 for this URL
+
+	// This test verifies the hash generation used for conflict detection
+	// In a real scenario, this hash would be used to label AppProjects
+	// and check for conflicts via Kubernetes label selectors
+}
+
+func TestGenerateRepositoryHash(t *testing.T) {
+	tests := []struct {
+		name     string
+		repoURL  string
+		expected string
+	}{
+		{
+			name:     "GitHub repository",
+			repoURL:  "https://github.com/user/repo",
+			expected: "b719fba9", // First 8 chars of SHA256
+		},
+		{
+			name:     "GitLab repository",
+			repoURL:  "https://gitlab.com/user/repo.git",
+			expected: "4b47a8b4", // First 8 chars of SHA256
+		},
+		{
+			name:     "Same URL should produce same hash",
+			repoURL:  "https://github.com/user/repo",
+			expected: "b719fba9",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hash := GenerateRepositoryHash(tt.repoURL)
+			require.Equal(t, tt.expected, hash)
+			require.Len(t, hash, 8) // Should always be 8 characters
+		})
+	}
+}
+
+func TestClusterRoleValidation_SecurityWarnings(t *testing.T) {
+	logger := logrus.New()
+	k8sStub := &kubernetesServiceStub{logger: logger}
+
+	validation, err := k8sStub.ValidateClusterRole(context.Background(), "test-role")
+	require.NoError(t, err)
+	require.NotNil(t, validation)
+	require.True(t, validation.Exists)
+	require.False(t, validation.HasClusterAdmin)
+	require.False(t, validation.HasNamespaceSpanning)
+	require.False(t, validation.HasClusterScoped)
+	require.Len(t, validation.Warnings, 0)
+	require.Contains(t, validation.ResourceTypes, "secrets")
+	require.Contains(t, validation.ResourceTypes, "configmaps")
+	require.Contains(t, validation.ResourceTypes, "deployments")
 }

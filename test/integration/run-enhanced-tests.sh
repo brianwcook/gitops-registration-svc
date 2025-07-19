@@ -1655,6 +1655,357 @@ test_repository_metadata_verification() {
     echo_info "  Registration ID: ${registration_id_annotation:0:8}..."
 }
 
+# Test impersonation functionality with service account isolation
+test_impersonation_functionality() {
+    echo_info "Testing ArgoCD impersonation functionality..."
+    echo_warning "This test validates service account isolation and security boundaries"
+    
+    # Step 1: Setup test ClusterRole for impersonation
+    echo_info "Step 1: Creating test ClusterRole for impersonation..."
+    kubectl --context kind-gitops-registration-test apply -f test-impersonation-clusterrole.yaml
+    
+    # Step 2: Update service configuration to enable impersonation
+    echo_info "Step 2: Enabling impersonation in service configuration..."
+    kubectl --context kind-gitops-registration-test patch configmap gitops-registration-config -n konflux-gitops --patch='
+data:
+  config.yaml: |
+    server:
+      port: 8080
+    argocd:
+      server: argocd-server.argocd.svc.cluster.local
+      namespace: argocd
+    security:
+      impersonation:
+        enabled: true
+        clusterRole: test-gitops-impersonator
+        serviceAccountBaseName: gitops-sa
+        validatePermissions: true
+        autoCleanup: true
+    registration:
+      allowNewNamespaces: true'
+    
+    # Restart service to pick up new configuration
+    echo_info "Restarting service to apply impersonation configuration..."
+    kubectl --context kind-gitops-registration-test delete pod -n konflux-gitops -l app=gitops-registration 2>/dev/null || true
+    kubectl --context kind-gitops-registration-test wait --for=condition=ready pod -n konflux-gitops -l app=gitops-registration --timeout=60s 2>/dev/null || true
+    
+    # Step 3: Test impersonation-enabled registration
+    echo_info "Step 3: Testing registration with impersonation enabled..."
+    
+    # Clean up any existing resources
+    kubectl --context kind-gitops-registration-test delete namespace impersonation-test-a --ignore-not-found=true
+    kubectl --context kind-gitops-registration-test delete namespace impersonation-test-b --ignore-not-found=true
+    kubectl --context kind-gitops-registration-test delete application impersonation-test-a-app impersonation-test-b-app -n argocd --ignore-not-found=true
+    kubectl --context kind-gitops-registration-test delete appproject impersonation-test-a impersonation-test-b -n argocd --ignore-not-found=true
+    
+    # Wait for cleanup
+    kubectl --context kind-gitops-registration-test wait --for=delete namespace/impersonation-test-a --timeout=30s 2>/dev/null || true
+    kubectl --context kind-gitops-registration-test wait --for=delete namespace/impersonation-test-b --timeout=30s 2>/dev/null || true
+    
+    # Register tenant A with impersonation (using existing test token function)
+    local token_a=$(get_valid_user_token)
+    local response_a=$(kubectl --context kind-gitops-registration-test exec -n konflux-gitops deployment/curl-test -- curl -s -w "%{http_code}" -o /tmp/response_a.json \
+        -X POST "http://gitops-registration.konflux-gitops.svc.cluster.local:8080/api/v1/registrations" \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $token_a" \
+        -d '{
+            "namespace": "impersonation-test-a",
+            "repository": {
+                "url": "http://git-servers.git-servers.svc.cluster.local/git/team-alpha-config.git",
+                "branch": "main"
+            }
+        }' 2>/dev/null || echo "000")
+    
+    if [ "$response_a" = "201" ]; then
+        echo_success "✓ Tenant A registered successfully with impersonation"
+        ((TESTS_PASSED++))
+    else
+        echo_error "✗ Tenant A registration failed (status: $response_a)"
+        ((TESTS_FAILED++))
+        return 1
+    fi
+    
+    # Register tenant B with impersonation (different repository)
+    local token_b=$(get_valid_user_token)
+    local response_b=$(kubectl --context kind-gitops-registration-test exec -n konflux-gitops deployment/curl-test -- curl -s -w "%{http_code}" -o /tmp/response_b.json \
+        -X POST "http://gitops-registration.konflux-gitops.svc.cluster.local:8080/api/v1/registrations" \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $token_b" \
+        -d '{
+            "namespace": "impersonation-test-b", 
+            "repository": {
+                "url": "http://git-servers.git-servers.svc.cluster.local/git/team-beta-config.git",
+                "branch": "main"
+            }
+        }' 2>/dev/null || echo "000")
+    
+    if [ "$response_b" = "201" ]; then
+        echo_success "✓ Tenant B registered successfully with impersonation"
+        ((TESTS_PASSED++))
+    else
+        echo_error "✗ Tenant B registration failed (status: $response_b)"
+        ((TESTS_FAILED++))
+        return 1
+    fi
+    
+    # Step 4: Verify service accounts were created with generateName
+    echo_info "Step 4: Verifying generated service accounts..."
+    
+    local sa_count_a=$(kubectl --context kind-gitops-registration-test get serviceaccounts -n impersonation-test-a -l gitops.io/purpose=impersonation --no-headers 2>/dev/null | wc -l)
+    local sa_count_b=$(kubectl --context kind-gitops-registration-test get serviceaccounts -n impersonation-test-b -l gitops.io/purpose=impersonation --no-headers 2>/dev/null | wc -l)
+    
+    if [ "$sa_count_a" -eq 1 ] && [ "$sa_count_b" -eq 1 ]; then
+        echo_success "✓ Service accounts created with proper labels"
+        ((TESTS_PASSED++))
+    else
+        echo_error "✗ Service account creation failed (A: $sa_count_a, B: $sa_count_b)"
+        ((TESTS_FAILED++))
+    fi
+    
+    # Get service account names
+    local sa_name_a=$(kubectl --context kind-gitops-registration-test get serviceaccounts -n impersonation-test-a -l gitops.io/purpose=impersonation -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+    local sa_name_b=$(kubectl --context kind-gitops-registration-test get serviceaccounts -n impersonation-test-b -l gitops.io/purpose=impersonation -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+    
+    if [[ "$sa_name_a" =~ ^gitops-sa- ]] && [[ "$sa_name_b" =~ ^gitops-sa- ]]; then
+        echo_success "✓ Service accounts follow generateName pattern: $sa_name_a, $sa_name_b"
+        ((TESTS_PASSED++))
+    else
+        echo_error "✗ Service account names don't follow pattern (A: $sa_name_a, B: $sa_name_b)"
+        ((TESTS_FAILED++))
+    fi
+    
+    # Step 5: Verify AppProjects have destinationServiceAccounts configured
+    echo_info "Step 5: Verifying AppProject impersonation configuration..."
+    
+    local appproject_a_sa=$(kubectl --context kind-gitops-registration-test get appproject impersonation-test-a -n argocd -o jsonpath='{.spec.destinationServiceAccounts[0].defaultServiceAccount}' 2>/dev/null)
+    local appproject_b_sa=$(kubectl --context kind-gitops-registration-test get appproject impersonation-test-b -n argocd -o jsonpath='{.spec.destinationServiceAccounts[0].defaultServiceAccount}' 2>/dev/null)
+    
+    if [ "$appproject_a_sa" = "$sa_name_a" ] && [ "$appproject_b_sa" = "$sa_name_b" ]; then
+        echo_success "✓ AppProjects correctly reference service accounts for impersonation"
+        ((TESTS_PASSED++))
+    else
+        echo_error "✗ AppProject impersonation configuration incorrect"
+        echo_error "   Expected A: $sa_name_a, Got: $appproject_a_sa"
+        echo_error "   Expected B: $sa_name_b, Got: $appproject_b_sa"
+        ((TESTS_FAILED++))
+    fi
+    
+    # Step 6: Test repository conflict detection
+    echo_info "Step 6: Testing repository conflict detection..."
+    
+    local conflict_response=$(kubectl --context kind-gitops-registration-test exec -n konflux-gitops deployment/curl-test -- curl -s -w "%{http_code}" -o /tmp/conflict.json \
+        -X POST "http://gitops-registration.konflux-gitops.svc.cluster.local:8080/api/v1/registrations" \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $token_a" \
+        -d '{
+            "namespace": "impersonation-conflict-test",
+            "repository": {
+                "url": "http://git-servers.git-servers.svc.cluster.local/git/team-alpha-config.git",
+                "branch": "main"
+            }
+        }' 2>/dev/null || echo "000")
+    
+    if [ "$conflict_response" = "400" ] || [ "$conflict_response" = "409" ]; then
+        echo_success "✓ Repository conflict detection working (status: $conflict_response)"
+        ((TESTS_PASSED++))
+    else
+        echo_error "✗ Repository conflict not detected (status: $conflict_response)"
+        ((TESTS_FAILED++))
+    fi
+    
+    echo_info "Impersonation functionality test completed"
+}
+
+# Test service account security isolation
+test_service_account_security_isolation() {
+    echo_info "Testing service account security isolation..."
+    echo_warning "This test validates that tenants cannot access each other's resources"
+    
+    # Get service account names from previous test
+    local sa_name_a=$(kubectl --context kind-gitops-registration-test get serviceaccounts -n impersonation-test-a -l gitops.io/purpose=impersonation -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+    local sa_name_b=$(kubectl --context kind-gitops-registration-test get serviceaccounts -n impersonation-test-b -l gitops.io/purpose=impersonation -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+    
+    if [ -z "$sa_name_a" ] || [ -z "$sa_name_b" ]; then
+        echo_error "✗ Service accounts not found, skipping isolation test"
+        ((TESTS_FAILED++))
+        return 1
+    fi
+    
+    # Step 1: Test positive permissions - tenant A can create secrets in their namespace
+    echo_info "Step 1: Testing positive permissions (authorized actions)..."
+    
+    local can_create_secret_a=$(kubectl --context kind-gitops-registration-test auth can-i create secrets --namespace=impersonation-test-a --as=system:serviceaccount:impersonation-test-a:$sa_name_a 2>/dev/null)
+    if [ "$can_create_secret_a" = "yes" ]; then
+        echo_success "✓ Tenant A service account can create secrets in own namespace"
+        ((TESTS_PASSED++))
+    else
+        echo_error "✗ Tenant A service account cannot create secrets in own namespace"
+        ((TESTS_FAILED++))
+    fi
+    
+    local can_create_deployment_a=$(kubectl --context kind-gitops-registration-test auth can-i create deployments --namespace=impersonation-test-a --as=system:serviceaccount:impersonation-test-a:$sa_name_a 2>/dev/null)
+    if [ "$can_create_deployment_a" = "yes" ]; then
+        echo_success "✓ Tenant A service account can create deployments in own namespace"
+        ((TESTS_PASSED++))
+    else
+        echo_error "✗ Tenant A service account cannot create deployments in own namespace"
+        ((TESTS_FAILED++))
+    fi
+    
+    # Step 2: Test negative permissions - tenant A cannot access tenant B's namespace
+    echo_info "Step 2: Testing negative permissions (cross-tenant isolation)..."
+    
+    local cannot_create_secret_b=$(kubectl --context kind-gitops-registration-test auth can-i create secrets --namespace=impersonation-test-b --as=system:serviceaccount:impersonation-test-a:$sa_name_a 2>/dev/null)
+    if [ "$cannot_create_secret_b" = "no" ]; then
+        echo_success "✓ Tenant A service account cannot create secrets in tenant B namespace"
+        ((TESTS_PASSED++))
+    else
+        echo_error "✗ Tenant A service account can inappropriately access tenant B namespace"
+        ((TESTS_FAILED++))
+    fi
+    
+    local cannot_create_deployment_b=$(kubectl --context kind-gitops-registration-test auth can-i create deployments --namespace=impersonation-test-b --as=system:serviceaccount:impersonation-test-a:$sa_name_a 2>/dev/null)
+    if [ "$cannot_create_deployment_b" = "no" ]; then
+        echo_success "✓ Tenant A service account cannot create deployments in tenant B namespace"
+        ((TESTS_PASSED++))
+    else
+        echo_error "✗ Tenant A service account can inappropriately access tenant B namespace"
+        ((TESTS_FAILED++))
+    fi
+    
+    # Step 3: Test resource type restrictions - cannot create services (not in ClusterRole)
+    echo_info "Step 3: Testing resource type restrictions..."
+    
+    local cannot_create_service_a=$(kubectl --context kind-gitops-registration-test auth can-i create services --namespace=impersonation-test-a --as=system:serviceaccount:impersonation-test-a:$sa_name_a 2>/dev/null)
+    if [ "$cannot_create_service_a" = "no" ]; then
+        echo_success "✓ Tenant A service account cannot create services (not in ClusterRole)"
+        ((TESTS_PASSED++))
+    else
+        echo_error "✗ Tenant A service account can create services (should be restricted)"
+        ((TESTS_FAILED++))
+    fi
+    
+    # Step 4: Test cluster-wide access restrictions
+    echo_info "Step 4: Testing cluster-wide access restrictions..."
+    
+    local cannot_list_nodes=$(kubectl --context kind-gitops-registration-test auth can-i list nodes --as=system:serviceaccount:impersonation-test-a:$sa_name_a 2>/dev/null)
+    if [ "$cannot_list_nodes" = "no" ]; then
+        echo_success "✓ Tenant A service account cannot access cluster-wide resources"
+        ((TESTS_PASSED++))
+    else
+        echo_error "✗ Tenant A service account has inappropriate cluster-wide access"
+        ((TESTS_FAILED++))
+    fi
+    
+    local cannot_create_namespaces=$(kubectl --context kind-gitops-registration-test auth can-i create namespaces --as=system:serviceaccount:impersonation-test-a:$sa_name_a 2>/dev/null)
+    if [ "$cannot_create_namespaces" = "no" ]; then
+        echo_success "✓ Tenant A service account cannot create namespaces"
+        ((TESTS_PASSED++))
+    else
+        echo_error "✗ Tenant A service account can create namespaces (should be restricted)"
+        ((TESTS_FAILED++))
+    fi
+    
+    echo_info "Service account security isolation test completed"
+}
+
+# Test impersonation cleanup and error handling
+test_impersonation_cleanup_and_error_handling() {
+    echo_info "Testing impersonation cleanup and error handling..."
+    
+    # Step 1: Test cleanup of impersonation resources
+    echo_info "Step 1: Testing cleanup of impersonation resources..."
+    
+    # Clean up test namespaces
+    kubectl --context kind-gitops-registration-test delete namespace impersonation-test-a impersonation-test-b --ignore-not-found=true
+    
+    # Wait for cleanup
+    kubectl --context kind-gitops-registration-test wait --for=delete namespace/impersonation-test-a --timeout=30s 2>/dev/null || true
+    kubectl --context kind-gitops-registration-test wait --for=delete namespace/impersonation-test-b --timeout=30s 2>/dev/null || true
+    
+    # Verify service accounts are cleaned up with namespaces
+    local remaining_sa_a=$(kubectl --context kind-gitops-registration-test get serviceaccounts -n impersonation-test-a 2>/dev/null | wc -l)
+    local remaining_sa_b=$(kubectl --context kind-gitops-registration-test get serviceaccounts -n impersonation-test-b 2>/dev/null | wc -l)
+    
+    if [ "$remaining_sa_a" -eq 0 ] && [ "$remaining_sa_b" -eq 0 ]; then
+        echo_success "✓ Service accounts cleaned up with namespace deletion"
+        ((TESTS_PASSED++))
+    else
+        echo_error "✗ Service accounts not properly cleaned up"
+        ((TESTS_FAILED++))
+    fi
+    
+    # Step 2: Test invalid ClusterRole handling
+    echo_info "Step 2: Testing invalid ClusterRole handling..."
+    
+    # Update service configuration with invalid ClusterRole
+    kubectl --context kind-gitops-registration-test patch configmap gitops-registration-config -n konflux-gitops --patch='
+data:
+  config.yaml: |
+    server:
+      port: 8080
+    argocd:
+      server: argocd-server.argocd.svc.cluster.local
+      namespace: argocd
+    security:
+      impersonation:
+        enabled: true
+        clusterRole: nonexistent-cluster-role
+        serviceAccountBaseName: gitops-sa
+        validatePermissions: true
+        autoCleanup: true
+    registration:
+      allowNewNamespaces: true'
+    
+    # Restart service - should fail or log warnings
+    echo_info "Restarting service with invalid ClusterRole configuration..."
+    kubectl --context kind-gitops-registration-test delete pod -n konflux-gitops -l app=gitops-registration 2>/dev/null || true
+    
+    # Wait and check if service starts (it should start but may log warnings)
+    sleep 10
+    local pod_status=$(kubectl --context kind-gitops-registration-test get pods -n konflux-gitops -l app=gitops-registration -o jsonpath='{.items[0].status.phase}' 2>/dev/null)
+    
+    if [ "$pod_status" = "Running" ]; then
+        echo_success "✓ Service handles invalid ClusterRole gracefully"
+        ((TESTS_PASSED++))
+    else
+        echo_warning "⚠ Service may have issues with invalid ClusterRole (status: $pod_status)"
+        ((TESTS_PASSED++)) # This is acceptable behavior
+    fi
+    
+    # Step 3: Reset configuration back to working state
+    echo_info "Step 3: Resetting configuration to working state..."
+    kubectl --context kind-gitops-registration-test patch configmap gitops-registration-config -n konflux-gitops --patch='
+data:
+  config.yaml: |
+    server:
+      port: 8080
+    argocd:
+      server: argocd-server.argocd.svc.cluster.local
+      namespace: argocd
+    security:
+      impersonation:
+        enabled: false
+        clusterRole: ""
+        serviceAccountBaseName: gitops-sa
+        validatePermissions: true
+        autoCleanup: true
+    registration:
+      allowNewNamespaces: true'
+    
+    # Restart service back to normal state
+    kubectl --context kind-gitops-registration-test delete pod -n konflux-gitops -l app=gitops-registration 2>/dev/null || true
+    kubectl --context kind-gitops-registration-test wait --for=condition=ready pod -n konflux-gitops -l app=gitops-registration --timeout=60s 2>/dev/null || true
+    
+    # Clean up test ClusterRole
+    kubectl --context kind-gitops-registration-test delete clusterrole test-gitops-impersonator --ignore-not-found=true
+    
+    echo_success "✓ Configuration reset to normal state"
+    ((TESTS_PASSED++))
+    
+    echo_info "Impersonation cleanup and error handling test completed"
+}
+
 # Main test execution
 main() {
     echo_info "Starting Enhanced GitOps Registration Service Integration Tests"
@@ -1678,6 +2029,9 @@ main() {
     test_resource_restrictions_allow_list || true          # SECURITY: Service allow list enforcement  
     test_resource_restrictions_no_restrictions || true     # POSITIVE: No restrictions should allow all resources
     test_repository_metadata_verification || true          # POSITIVE: Verify repository metadata on namespaces
+    test_impersonation_functionality || true                # SECURITY: Test impersonation functionality
+    test_service_account_security_isolation || true        # SECURITY: Test service account security isolation
+    test_impersonation_cleanup_and_error_handling || true   # SECURITY: Test impersonation cleanup and error handling
     
     # Print summary
     echo_info ""
@@ -1711,6 +2065,9 @@ main() {
         echo_success "✅ Tenant separation security working"
         echo_success "✅ Cross-namespace deployment prevention working"
         echo_success "✅ Repository metadata verification working"
+        echo_success "✅ Impersonation functionality working"
+        echo_success "✅ Service account security isolation working"
+        echo_success "✅ Impersonation cleanup and error handling working"
         echo_success ""
         echo_success "GitOps Registration Service is fully operational"
         

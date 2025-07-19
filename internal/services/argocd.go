@@ -292,3 +292,22 @@ func (a *argoCDService) HealthCheck(ctx context.Context) error {
 	}
 	return nil
 }
+
+// CheckAppProjectConflict checks if an AppProject exists for the given repository hash
+func (a *argoCDService) CheckAppProjectConflict(ctx context.Context, repositoryHash string) (bool, error) {
+	labelSelector := fmt.Sprintf("%s=%s", RepositoryHashLabel, repositoryHash)
+
+	appProjects, err := a.client.Resource(appProjectGVR).Namespace(a.namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: labelSelector,
+	})
+	if err != nil {
+		return false, fmt.Errorf("failed to check AppProject conflict for repository hash %s: %w", repositoryHash, err)
+	}
+
+	exists := len(appProjects.Items) > 0
+	if exists {
+		a.logger.Infof("Found existing AppProject for repository hash %s", repositoryHash)
+	}
+
+	return exists, nil
+}

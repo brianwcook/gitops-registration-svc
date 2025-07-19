@@ -75,6 +75,18 @@ func (r *registrationService) CreateRegistration(ctx context.Context, req *types
 		"registrationID": registrationID,
 	}).Info("Creating registration")
 
+	// Step 0: Check for repository conflicts if impersonation is enabled
+	if r.cfg.Security.Impersonation.Enabled {
+		repoHash := GenerateRepositoryHash(req.Repository.URL)
+		conflictExists, err := r.argocd.CheckAppProjectConflict(ctx, repoHash)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check repository conflict: %w", err)
+		}
+		if conflictExists {
+			return nil, fmt.Errorf("repository %s is already registered in another AppProject", req.Repository.URL)
+		}
+	}
+
 	// Check if namespace already exists
 	exists, err := r.k8s.NamespaceExists(ctx, req.Namespace)
 	if err != nil {
@@ -132,27 +144,62 @@ func (r *registrationService) CreateRegistration(ctx context.Context, req *types
 		return nil, fmt.Errorf("failed to create namespace: %w", err)
 	}
 
-	// Step 2: Create service account
-	serviceAccountName := "gitops"
-	if err := r.k8s.CreateServiceAccount(ctx, req.Namespace, serviceAccountName); err != nil {
-		registration.Status.Phase = "failed"
-		registration.Status.Message = fmt.Sprintf("Failed to create service account: %v", err)
-		return nil, fmt.Errorf("failed to create service account: %w", err)
-	}
+	var serviceAccountName string
+	var roleBindingName string
 
-	// Step 3: Create role binding for the service account
-	roleBindingName := "gitops-binding"
-	if err := r.k8s.CreateRoleBinding(ctx, req.Namespace, roleBindingName, "gitops-role", serviceAccountName); err != nil {
-		registration.Status.Phase = "failed"
-		registration.Status.Message = fmt.Sprintf("Failed to create role binding: %v", err)
-		return nil, fmt.Errorf("failed to create role binding: %w", err)
+	// Step 2: Create service account (with impersonation support)
+	if r.cfg.Security.Impersonation.Enabled {
+		r.logger.WithField("namespace", req.Namespace).Info("Creating service account with impersonation")
+
+		// Create service account with generated name
+		generatedName, err := r.k8s.CreateServiceAccountWithGenerateName(ctx, req.Namespace, r.cfg.Security.Impersonation.ServiceAccountBaseName)
+		if err != nil {
+			// Cleanup: remove namespace on failure
+			r.k8s.DeleteNamespace(ctx, req.Namespace)
+			registration.Status.Phase = "failed"
+			registration.Status.Message = fmt.Sprintf("Failed to create service account: %v", err)
+			return nil, fmt.Errorf("failed to create service account: %w", err)
+		}
+		serviceAccountName = generatedName
+
+		// Step 3: Create role binding for impersonation
+		roleBindingName = fmt.Sprintf("%s-binding", serviceAccountName)
+		if err := r.k8s.CreateRoleBindingForServiceAccount(ctx, req.Namespace, roleBindingName, r.cfg.Security.Impersonation.ClusterRole, serviceAccountName); err != nil {
+			// Cleanup: remove namespace on failure
+			r.k8s.DeleteNamespace(ctx, req.Namespace)
+			registration.Status.Phase = "failed"
+			registration.Status.Message = fmt.Sprintf("Failed to create role binding: %v", err)
+			return nil, fmt.Errorf("failed to create role binding: %w", err)
+		}
+	} else {
+		// Legacy behavior: use fixed service account name
+		serviceAccountName = "gitops"
+		if err := r.k8s.CreateServiceAccount(ctx, req.Namespace, serviceAccountName); err != nil {
+			// Cleanup: remove namespace on failure
+			r.k8s.DeleteNamespace(ctx, req.Namespace)
+			registration.Status.Phase = "failed"
+			registration.Status.Message = fmt.Sprintf("Failed to create service account: %v", err)
+			return nil, fmt.Errorf("failed to create service account: %w", err)
+		}
+
+		// Step 3: Create role binding for the service account (legacy)
+		roleBindingName = "gitops-binding"
+		if err := r.k8s.CreateRoleBinding(ctx, req.Namespace, roleBindingName, "gitops-role", serviceAccountName); err != nil {
+			// Cleanup: remove namespace on failure
+			r.k8s.DeleteNamespace(ctx, req.Namespace)
+			registration.Status.Phase = "failed"
+			registration.Status.Message = fmt.Sprintf("Failed to create role binding: %v", err)
+			return nil, fmt.Errorf("failed to create role binding: %w", err)
+		}
 	}
 
 	// Step 4: Create ArgoCD AppProject
 	projectName := req.Namespace
-	appProject := r.buildAppProject(projectName, req.Namespace, req.Repository.URL)
+	appProject := r.buildAppProject(projectName, req.Namespace, req.Repository.URL, serviceAccountName)
 
 	if err := r.argocd.CreateAppProject(ctx, appProject); err != nil {
+		// Cleanup: remove namespace on failure
+		r.k8s.DeleteNamespace(ctx, req.Namespace)
 		registration.Status.Phase = "failed"
 		registration.Status.Message = fmt.Sprintf("Failed to create ArgoCD AppProject: %v", err)
 		return nil, fmt.Errorf("failed to create ArgoCD AppProject: %w", err)
@@ -175,6 +222,8 @@ func (r *registrationService) CreateRegistration(ctx context.Context, req *types
 	}
 
 	if err := r.argocd.CreateApplication(ctx, application); err != nil {
+		// Cleanup: remove namespace on failure
+		r.k8s.DeleteNamespace(ctx, req.Namespace)
 		registration.Status.Phase = "failed"
 		registration.Status.Message = fmt.Sprintf("Failed to create ArgoCD Application: %v", err)
 		return nil, fmt.Errorf("failed to create ArgoCD Application: %w", err)
@@ -196,6 +245,8 @@ func (r *registrationService) CreateRegistration(ctx context.Context, req *types
 		"registrationID":    registrationID,
 		"argoCDApplication": appName,
 		"argoCDAppProject":  projectName,
+		"serviceAccount":    serviceAccountName,
+		"impersonation":     r.cfg.Security.Impersonation.Enabled,
 	}).Info("Successfully completed registration")
 
 	return registration, nil
@@ -306,7 +357,7 @@ func (r *registrationService) RegisterExistingNamespace(ctx context.Context, req
 
 	// Step 4: Create ArgoCD AppProject
 	projectName := req.ExistingNamespace
-	appProject := r.buildAppProject(projectName, req.ExistingNamespace, req.Repository.URL)
+	appProject := r.buildAppProject(projectName, req.ExistingNamespace, req.Repository.URL, "gitops") // Default service account for existing namespace
 
 	if err := r.argocd.CreateAppProject(ctx, appProject); err != nil {
 		registration.Status.Phase = "failed"
@@ -382,9 +433,18 @@ func (r *registrationService) ValidateExistingNamespaceRequest(ctx context.Conte
 	return nil
 }
 
-func (r *registrationService) buildAppProject(projectName, namespace, repoURL string) *types.AppProject {
+func (r *registrationService) buildAppProject(projectName, namespace, repoURL, serviceAccountName string) *types.AppProject {
+	// Generate repository hash for labeling
+	repoHash := GenerateRepositoryHash(repoURL)
+
 	appProject := &types.AppProject{
-		Name: projectName,
+		Name:      projectName,
+		Namespace: r.cfg.ArgoCD.Namespace, // AppProjects live in ArgoCD namespace
+		Labels: map[string]string{
+			RepositoryHashLabel:            repoHash,
+			"gitops.io/managed-by":         "gitops-registration-service",
+			"app.kubernetes.io/managed-by": "gitops-registration-service",
+		},
 		Destinations: []types.AppProjectDestination{
 			{
 				Server:    "https://kubernetes.default.svc",
@@ -392,6 +452,17 @@ func (r *registrationService) buildAppProject(projectName, namespace, repoURL st
 			},
 		},
 		SourceRepos: []string{repoURL},
+	}
+
+	// Add impersonation support if enabled
+	if r.cfg.Security.Impersonation.Enabled {
+		appProject.DestinationServiceAccounts = []types.AppProjectDestinationServiceAccount{
+			{
+				Server:                "https://kubernetes.default.svc",
+				Namespace:             namespace,
+				DefaultServiceAccount: serviceAccountName,
+			},
+		}
 	}
 
 	// Configure resource restrictions based on service-level configuration

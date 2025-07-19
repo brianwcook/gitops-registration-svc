@@ -41,11 +41,23 @@ type KubernetesConfig struct {
 
 // SecurityConfig holds security-related configuration
 type SecurityConfig struct {
-	AllowedResourceTypes              []string                     `yaml:"allowedResourceTypes"`
-	ResourceAllowList                 []ServiceResourceRestriction `yaml:"resourceAllowList,omitempty"`
-	ResourceDenyList                  []ServiceResourceRestriction `yaml:"resourceDenyList,omitempty"`
-	RequireAppProjectPerTenant        bool                         `yaml:"requireAppProjectPerTenant"`
-	EnableServiceAccountImpersonation bool                         `yaml:"enableServiceAccountImpersonation"`
+	AllowedResourceTypes       []string                     `yaml:"allowedResourceTypes"`
+	ResourceAllowList          []ServiceResourceRestriction `yaml:"resourceAllowList,omitempty"`
+	ResourceDenyList           []ServiceResourceRestriction `yaml:"resourceDenyList,omitempty"`
+	RequireAppProjectPerTenant bool                         `yaml:"requireAppProjectPerTenant"`
+	// Deprecated: Use Impersonation.Enabled instead
+	EnableServiceAccountImpersonation bool `yaml:"enableServiceAccountImpersonation"`
+	// New impersonation configuration
+	Impersonation ImpersonationConfig `yaml:"impersonation"`
+}
+
+// ImpersonationConfig holds ArgoCD impersonation configuration
+type ImpersonationConfig struct {
+	Enabled                bool   `yaml:"enabled"`
+	ClusterRole            string `yaml:"clusterRole"`
+	ServiceAccountBaseName string `yaml:"serviceAccountBaseName"`
+	ValidatePermissions    bool   `yaml:"validatePermissions"`
+	AutoCleanup            bool   `yaml:"autoCleanup"`
 }
 
 // ServiceResourceRestriction represents a resource type restriction for service-level configuration
@@ -110,6 +122,13 @@ func Load() (*Config, error) {
 			},
 			RequireAppProjectPerTenant:        true,
 			EnableServiceAccountImpersonation: true,
+			Impersonation: ImpersonationConfig{
+				Enabled:                false, // Default to disabled for security
+				ClusterRole:            "",    // Must be explicitly set when enabled
+				ServiceAccountBaseName: "gitops-sa",
+				ValidatePermissions:    true,
+				AutoCleanup:            true,
+			},
 		},
 		Registration: RegistrationConfig{
 			AllowNewNamespaces: true,
@@ -214,6 +233,23 @@ func validateResourceRestrictions(allowList, denyList []ServiceResourceRestricti
 			return fmt.Errorf("resourceDenyList[%d]: kind is required", i)
 		}
 		// Note: group can be empty for core resources, so we don't validate it
+	}
+
+	return nil
+}
+
+// ValidateImpersonationConfig validates the impersonation configuration
+func (c *Config) ValidateImpersonationConfig() error {
+	if !c.Security.Impersonation.Enabled {
+		return nil // No validation needed if disabled
+	}
+
+	if c.Security.Impersonation.ClusterRole == "" {
+		return fmt.Errorf("impersonation.clusterRole must be set when impersonation is enabled")
+	}
+
+	if c.Security.Impersonation.ServiceAccountBaseName == "" {
+		return fmt.Errorf("impersonation.serviceAccountBaseName cannot be empty")
 	}
 
 	return nil

@@ -35,6 +35,30 @@ func New(cfg *config.Config, logger *logrus.Logger) (*Server, error) {
 		return nil, fmt.Errorf("failed to initialize services: %w", err)
 	}
 
+	// Validate impersonation configuration if enabled
+	if cfg.Security.Impersonation.Enabled {
+		logger.Infof("Impersonation is enabled, validating ClusterRole: %s", cfg.Security.Impersonation.ClusterRole)
+
+		validation, err := svc.Kubernetes.ValidateClusterRole(context.Background(), cfg.Security.Impersonation.ClusterRole)
+		if err != nil {
+			return nil, fmt.Errorf("failed to validate ClusterRole %s: %w", cfg.Security.Impersonation.ClusterRole, err)
+		}
+
+		if !validation.Exists {
+			return nil, fmt.Errorf("ClusterRole %s does not exist", cfg.Security.Impersonation.ClusterRole)
+		}
+
+		// Log security warnings
+		if len(validation.Warnings) > 0 {
+			logger.Warnf("ClusterRole %s security warnings:", cfg.Security.Impersonation.ClusterRole)
+			for _, warning := range validation.Warnings {
+				logger.Warnf("  - %s", warning)
+			}
+		}
+
+		logger.Infof("ClusterRole %s validated successfully for impersonation", cfg.Security.Impersonation.ClusterRole)
+	}
+
 	// Create router
 	router := chi.NewRouter()
 

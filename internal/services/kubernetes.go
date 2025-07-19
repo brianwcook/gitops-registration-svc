@@ -321,3 +321,141 @@ func (k *kubernetesService) CreateRoleBinding(ctx context.Context, namespace, na
 	}).Info("Successfully created role binding")
 	return nil
 }
+
+// ValidateClusterRole validates a ClusterRole and returns security warnings
+func (k *kubernetesService) ValidateClusterRole(ctx context.Context, name string) (*ClusterRoleValidation, error) {
+	validation := &ClusterRoleValidation{
+		Exists:        false,
+		Warnings:      []string{},
+		ResourceTypes: []string{},
+	}
+
+	clusterRole, err := k.client.RbacV1().ClusterRoles().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return validation, nil // Exists remains false
+		}
+		return nil, fmt.Errorf("failed to get ClusterRole %s: %w", name, err)
+	}
+
+	validation.Exists = true
+
+	// Analyze rules for security issues
+	for _, rule := range clusterRole.Rules {
+		// Check for cluster-admin permissions
+		if containsAll(rule.Verbs, []string{"*"}) && containsAll(rule.Resources, []string{"*"}) {
+			validation.HasClusterAdmin = true
+			validation.Warnings = append(validation.Warnings, "ClusterRole has cluster-admin level permissions (*/* resources)")
+		}
+
+		// Check for namespace-spanning permissions
+		if contains(rule.Verbs, "list") || contains(rule.Verbs, "watch") {
+			for _, resource := range rule.Resources {
+				if resource == "namespaces" || resource == "*" {
+					validation.HasNamespaceSpanning = true
+					validation.Warnings = append(validation.Warnings, "ClusterRole can list/watch across namespaces")
+					break
+				}
+			}
+		}
+
+		// Check for cluster-scoped resource modification
+		clusterScopedResources := []string{"nodes", "namespaces", "clusterroles", "clusterrolebindings", "persistentvolumes"}
+		for _, resource := range rule.Resources {
+			if contains(clusterScopedResources, resource) || resource == "*" {
+				if contains(rule.Verbs, "create") || contains(rule.Verbs, "update") || contains(rule.Verbs, "delete") || contains(rule.Verbs, "patch") {
+					validation.HasClusterScoped = true
+					validation.Warnings = append(validation.Warnings, fmt.Sprintf("ClusterRole can modify cluster-scoped resource: %s", resource))
+				}
+			}
+		}
+
+		// Collect resource types
+		validation.ResourceTypes = append(validation.ResourceTypes, rule.Resources...)
+	}
+
+	return validation, nil
+}
+
+// CreateServiceAccountWithGenerateName creates a service account with generated name
+func (k *kubernetesService) CreateServiceAccountWithGenerateName(ctx context.Context, namespace, baseName string) (string, error) {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: baseName + "-",
+			Namespace:    namespace,
+			Labels: map[string]string{
+				"gitops.io/managed-by": "gitops-registration-service",
+				"gitops.io/purpose":    "impersonation",
+			},
+		},
+	}
+
+	created, err := k.client.CoreV1().ServiceAccounts(namespace).Create(ctx, sa, metav1.CreateOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to create service account in namespace %s: %w", namespace, err)
+	}
+
+	k.logger.Infof("Created service account %s in namespace %s", created.Name, namespace)
+	return created.Name, nil
+}
+
+// CreateRoleBindingForServiceAccount creates a RoleBinding binding a ClusterRole to a ServiceAccount
+func (k *kubernetesService) CreateRoleBindingForServiceAccount(ctx context.Context, namespace, name, clusterRole, serviceAccountName string) error {
+	roleBinding := &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			Labels: map[string]string{
+				"gitops.io/managed-by": "gitops-registration-service",
+				"gitops.io/purpose":    "impersonation",
+			},
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      serviceAccountName,
+				Namespace: namespace,
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "ClusterRole",
+			Name:     clusterRole,
+		},
+	}
+
+	_, err := k.client.RbacV1().RoleBindings(namespace).Create(ctx, roleBinding, metav1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to create RoleBinding %s in namespace %s: %w", name, namespace, err)
+	}
+
+	k.logger.Infof("Created RoleBinding %s in namespace %s", name, namespace)
+	return nil
+}
+
+// CheckAppProjectConflict checks if an AppProject exists for the given repository hash
+func (k *kubernetesService) CheckAppProjectConflict(ctx context.Context, repositoryHash string) (bool, error) {
+	// This is a placeholder - the actual implementation would use ArgoCD client
+	// to check for AppProjects with the repository hash label
+	// For now, we'll implement this in the ArgoCD service
+	return false, nil
+}
+
+// Helper functions
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item || s == "*" {
+			return true
+		}
+	}
+	return false
+}
+
+func containsAll(slice []string, items []string) bool {
+	for _, item := range items {
+		if !contains(slice, item) {
+			return false
+		}
+	}
+	return true
+}

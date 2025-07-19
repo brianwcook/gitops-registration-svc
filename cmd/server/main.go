@@ -26,6 +26,11 @@ func main() {
 		log.WithError(err).Fatal("Failed to load configuration")
 	}
 
+	// Validate impersonation configuration
+	if err := cfg.ValidateImpersonationConfig(); err != nil {
+		log.Fatalf("Invalid impersonation configuration: %v", err)
+	}
+
 	// Initialize server
 	srv, err := server.New(cfg, log)
 	if err != nil {

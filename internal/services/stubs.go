@@ -98,6 +98,38 @@ func (k *kubernetesServiceStub) CreateRoleBinding(ctx context.Context, namespace
 	return nil
 }
 
+// ValidateClusterRole validates a ClusterRole (stub implementation)
+func (k *kubernetesServiceStub) ValidateClusterRole(ctx context.Context, name string) (*ClusterRoleValidation, error) {
+	// Return a valid ClusterRole for testing
+	return &ClusterRoleValidation{
+		Exists:               true,
+		HasClusterAdmin:      false,
+		HasNamespaceSpanning: false,
+		HasClusterScoped:     false,
+		Warnings:             []string{},
+		ResourceTypes:        []string{"secrets", "configmaps", "deployments"},
+	}, nil
+}
+
+// CreateServiceAccountWithGenerateName creates a service account with generated name (stub)
+func (k *kubernetesServiceStub) CreateServiceAccountWithGenerateName(ctx context.Context, namespace, baseName string) (string, error) {
+	generatedName := fmt.Sprintf("%s-%s", baseName, "abc123")
+	k.logger.Infof("Creating service account %s in namespace %s", generatedName, namespace)
+	return generatedName, nil
+}
+
+// CreateRoleBindingForServiceAccount creates a RoleBinding (stub)
+func (k *kubernetesServiceStub) CreateRoleBindingForServiceAccount(ctx context.Context, namespace, name, clusterRole, serviceAccountName string) error {
+	k.logger.Infof("Creating RoleBinding %s in namespace %s", name, namespace)
+	return nil
+}
+
+// CheckAppProjectConflict checks for conflicts (stub)
+func (k *kubernetesServiceStub) CheckAppProjectConflict(ctx context.Context, repositoryHash string) (bool, error) {
+	// Always return no conflict for testing
+	return false, nil
+}
+
 // argoCDServiceStub is a stub implementation of ArgoCDService
 type argoCDServiceStub struct {
 	logger *logrus.Logger
@@ -155,6 +187,12 @@ func (a *argoCDServiceStub) convertResourceListToInterface(resources []types.App
 		}
 	}
 	return result
+}
+
+// CheckAppProjectConflict checks for repository conflicts (stub)
+func (a *argoCDServiceStub) CheckAppProjectConflict(ctx context.Context, repositoryHash string) (bool, error) {
+	// Always return no conflict for stub testing
+	return false, nil
 }
 
 // authorizationServiceStub is a stub implementation of AuthorizationService
