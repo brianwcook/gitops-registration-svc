@@ -93,7 +93,7 @@ jobs:
         echo "✅ go.mod and go.sum are tidy"
 
     - name: Run linting
-      uses: golangci/golangci-lint-action@v6
+      uses: golangci/golangci-lint-action@v8
       with:
         version: v1.54
         args: --timeout=2m
