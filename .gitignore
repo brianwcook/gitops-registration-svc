@@ -1,2 +1,5 @@
 # Build artifacts
 bin/
+integration_run.log
+server
+test/integration/integration.test
