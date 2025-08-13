@@ -257,20 +257,25 @@ func (k *kubernetesService) CreateServiceAccount(ctx context.Context, namespace,
 		},
 	}
 
-	_, err := k.client.CoreV1().ServiceAccounts(namespace).Create(ctx, serviceAccount, metav1.CreateOptions{})
+	// If a dedicated ServiceAccount namespace is configured, create SA in that namespace
+	saNamespace := k.cfg.Security.ServiceAccountNamespace
+	if saNamespace == "" {
+		saNamespace = namespace
+	}
+	_, err := k.client.CoreV1().ServiceAccounts(saNamespace).Create(ctx, serviceAccount, metav1.CreateOptions{})
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
 			k.logger.WithFields(logrus.Fields{
-				"namespace": namespace,
+				"namespace": saNamespace,
 				"name":      name,
 			}).Info("Service account already exists")
 			return nil
 		}
-		return fmt.Errorf("failed to create service account %s in namespace %s: %w", name, namespace, err)
+		return fmt.Errorf("failed to create service account %s in namespace %s: %w", name, saNamespace, err)
 	}
 
 	k.logger.WithFields(logrus.Fields{
-		"namespace": namespace,
+		"namespace": saNamespace,
 		"name":      name,
 	}).Info("Successfully created service account")
 	return nil
@@ -296,9 +301,17 @@ func (k *kubernetesService) CreateRoleBinding(ctx context.Context, namespace, na
 		},
 		Subjects: []rbacv1.Subject{
 			{
-				Kind:      "ServiceAccount",
-				Name:      serviceAccount,
-				Namespace: namespace,
+				Kind: "ServiceAccount",
+				Name: serviceAccount,
+				// Note: ServiceAccount may live in a dedicated namespace per configuration.
+				// The RoleBinding is namespaced to 'namespace', but the subject can reference
+				// a ServiceAccount in another namespace.
+				Namespace: func() string {
+					if k.cfg.Security.ServiceAccountNamespace == "" {
+						return namespace
+					}
+					return k.cfg.Security.ServiceAccountNamespace
+				}(),
 			},
 		},
 		RoleRef: rbacv1.RoleRef{
@@ -421,12 +434,17 @@ func (k *kubernetesService) CreateServiceAccountWithGenerateName(ctx context.Con
 		},
 	}
 
-	created, err := k.client.CoreV1().ServiceAccounts(namespace).Create(ctx, sa, metav1.CreateOptions{})
-	if err != nil {
-		return "", fmt.Errorf("failed to create service account in namespace %s: %w", namespace, err)
+	saNamespace := k.cfg.Security.ServiceAccountNamespace
+	if saNamespace == "" {
+		saNamespace = namespace
 	}
 
-	k.logger.Infof("Created service account %s in namespace %s", created.Name, namespace)
+	created, err := k.client.CoreV1().ServiceAccounts(saNamespace).Create(ctx, sa, metav1.CreateOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to create service account in namespace %s: %w", saNamespace, err)
+	}
+
+	k.logger.Infof("Created service account %s in namespace %s", created.Name, saNamespace)
 	return created.Name, nil
 }
 
@@ -443,9 +461,14 @@ func (k *kubernetesService) CreateRoleBindingForServiceAccount(ctx context.Conte
 		},
 		Subjects: []rbacv1.Subject{
 			{
-				Kind:      "ServiceAccount",
-				Name:      serviceAccountName,
-				Namespace: namespace,
+				Kind: "ServiceAccount",
+				Name: serviceAccountName,
+				Namespace: func() string {
+					if k.cfg.Security.ServiceAccountNamespace == "" {
+						return namespace
+					}
+					return k.cfg.Security.ServiceAccountNamespace
+				}(),
 			},
 		},
 		RoleRef: rbacv1.RoleRef{

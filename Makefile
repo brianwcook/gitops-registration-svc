@@ -81,7 +81,7 @@ setup-test-data: ## Set up git repositories and test data
 	kubectl --context kind-gitops-registration-test wait --for=condition=Ready pod -l app=git-servers -n git-servers --timeout=60s
 	@echo "Setting up impersonation configuration for testing..."
 	kubectl --context kind-gitops-registration-test apply -f test/integration/test-impersonation-clusterrole.yaml
-	kubectl --context kind-gitops-registration-test patch configmap gitops-registration-config -n konflux-gitops --type merge -p='{"data":{"config.yaml":"server:\n  port: 8080\nargocd:\n  server: argocd-server.argocd.svc.cluster.local\n  namespace: argocd\nsecurity:\n  impersonation:\n    enabled: true\n    clusterRole: test-gitops-impersonator\n    serviceAccountBaseName: gitops-sa\n    validatePermissions: true\n    autoCleanup: true\nregistration:\n  allowNewNamespaces: true"}}'
+	kubectl --context kind-gitops-registration-test patch configmap gitops-registration-config -n konflux-gitops --type merge -p='{"data":{"config.yaml":"server:\n  port: 8080\nargocd:\n  server: argocd-server.argocd.svc.cluster.local\n  namespace: argocd\nsecurity:\n  impersonation:\n    enabled: true\n    clusterRole: test-gitops-impersonator\n    serviceAccountBaseName: gitops-sa\n    validatePermissions: true\n    autoCleanup: true\n  serviceAccountNamespace: gitops-registrations-sa\nregistration:\n  allowNewNamespaces: true"}}'
 	kubectl --context kind-gitops-registration-test patch clusterrole gitops-registration-controller --type='merge' -p='{"rules":[{"apiGroups":[""],"resources":["namespaces"],"verbs":["create","get","list","watch","update","patch","delete"]},{"apiGroups":[""],"resources":["serviceaccounts"],"verbs":["create","get","list","watch","update","patch","delete"]},{"apiGroups":["rbac.authorization.k8s.io"],"resources":["roles","rolebindings","clusterroles","clusterrolebindings"],"verbs":["create","get","list","watch","update","patch","delete"]},{"apiGroups":["rbac.authorization.k8s.io"],"resourceNames":["gitops-tenant-role"],"resources":["clusterroles"],"verbs":["bind"]},{"apiGroups":["rbac.authorization.k8s.io"],"resourceNames":["gitops-role"],"resources":["clusterroles"],"verbs":["bind"]},{"apiGroups":["rbac.authorization.k8s.io"],"resourceNames":["test-gitops-impersonator"],"resources":["clusterroles"],"verbs":["bind"]},{"apiGroups":["argoproj.io"],"resources":["appprojects","applications"],"verbs":["create","get","list","watch","update","patch","delete"]},{"apiGroups":[""],"resources":["resourcequotas","limitranges"],"verbs":["create","get","list","watch","update","patch","delete"]},{"apiGroups":[""],"resources":["configmaps","secrets","services"],"verbs":["get","list","watch","create","update","patch","delete"]},{"apiGroups":["apps"],"resources":["deployments","replicasets"],"verbs":["create","get","list","watch","update","patch","delete"]},{"apiGroups":["networking.k8s.io"],"resources":["ingresses"],"verbs":["create","get","list","watch","update","patch","delete"]},{"apiGroups":["authorization.k8s.io"],"resources":["subjectaccessreviews"],"verbs":["create"]},{"apiGroups":["authentication.k8s.io"],"resources":["tokenreviews"],"verbs":["create"]},{"apiGroups":[""],"resources":["events"],"verbs":["create","get","list","watch"]},{"apiGroups":[""],"resources":["nodes","persistentvolumes"],"verbs":["get","list","watch"]}]}'
 	kubectl --context kind-gitops-registration-test delete pod -n konflux-gitops -l serving.knative.dev/service=gitops-registration || true
 	@echo "Waiting for service to restart with impersonation configuration..."
@@ -92,21 +92,19 @@ run-integration-tests: ## Run the enhanced integration tests
 	@echo "Running enhanced integration tests with Go..."
 	@echo "Setting up kubectl port-forward for external access..."
 	@DEPLOYMENT=$$(kubectl --context kind-gitops-registration-test get deployment -n konflux-gitops -l serving.knative.dev/service=gitops-registration --no-headers | grep -E '1/1|[1-9]+/[1-9]+' | head -1 | cut -d' ' -f1) && \
-	echo "Using deployment: $$DEPLOYMENT" && \
-	kubectl --context kind-gitops-registration-test port-forward -n konflux-gitops deployment/$$DEPLOYMENT 8080:8080 & \
-	PORT_FORWARD_PID=$$! && \
-	echo "Port-forward PID: $$PORT_FORWARD_PID"
-	@echo "Waiting for port-forward to be ready..."
-	@sleep 5
-	@echo "Running Go integration tests..."
-	@set -e; \
-	export SERVICE_URL=http://localhost:8080 && \
-	cd test/integration && \
-	go mod tidy && \
-	go test -v -timeout=30m -count=1 -tags=integration ./... && \
-	echo "✅ Integration tests passed!" && \
-	echo "Cleaning up port-forward..." && \
-	(ps aux | grep "kubectl.*port-forward.*gitops-registration" | grep -v grep | awk '{print $$2}' | head -1 | xargs -r kill 2>/dev/null || true)
+		echo "Using deployment: $$DEPLOYMENT" && \
+		kubectl --context kind-gitops-registration-test port-forward -n konflux-gitops deployment/$$DEPLOYMENT 8080:8080 > /tmp/gitops-port-forward.log 2>&1 & \
+		PORT_FORWARD_PID=$$! && \
+		echo "Port-forward PID: $$PORT_FORWARD_PID" && \
+		trap "echo 'Cleaning up port-forward...'; kill -9 $$PORT_FORWARD_PID >/dev/null 2>&1 || true" EXIT; \
+		echo "Waiting for port-forward to be ready..."; \
+		sleep 5; \
+		echo "Running Go integration tests..."; \
+		set -e; \
+		export SERVICE_URL=http://localhost:8080; \
+		cd test/integration; \
+		go mod tidy; \
+		go test -v -timeout=30m -count=1 -tags=integration ./...
 
 # KIND cluster management
 setup-kind: ## Set up single-node KIND cluster

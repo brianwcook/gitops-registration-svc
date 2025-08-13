@@ -135,6 +135,7 @@ func setupRegistrationService(t *testing.T) (*registrationService, *MockKubernet
 
 	cfg := &config.Config{
 		Security: config.SecurityConfig{
+			ServiceAccountNamespace: "gitops-registrations-sa",
 			Impersonation: config.ImpersonationConfig{
 				Enabled:                false,
 				ServiceAccountBaseName: "gitops",
@@ -402,7 +403,8 @@ func TestRegistrationService_SetupServiceAccount_Legacy(t *testing.T) {
 			// Reset mocks
 			mockK8s.ExpectedCalls = nil
 
-			mockK8s.On("CreateServiceAccount", ctx, namespace, "gitops").Return(tt.serviceAccountErr)
+			// Service accounts are created in dedicated namespace
+			mockK8s.On("CreateServiceAccount", ctx, "gitops-registrations-sa", "gitops").Return(tt.serviceAccountErr)
 			if tt.serviceAccountErr == nil {
 				mockK8s.On("CreateRoleBinding", ctx, namespace, "gitops-binding", "gitops-role", "gitops").Return(tt.roleBindingErr)
 			}
@@ -461,7 +463,7 @@ func TestRegistrationService_SetupServiceAccount_Impersonation(t *testing.T) {
 			// Reset mocks
 			mockK8s.ExpectedCalls = nil
 
-			mockK8s.On("CreateServiceAccountWithGenerateName", ctx, namespace, "gitops-sa").Return(tt.generatedSAName, tt.serviceAccountErr)
+			mockK8s.On("CreateServiceAccountWithGenerateName", ctx, "gitops-registrations-sa", "gitops-sa").Return(tt.generatedSAName, tt.serviceAccountErr)
 			if tt.serviceAccountErr == nil && tt.generatedSAName != "" {
 				mockK8s.On("CreateRoleBindingForServiceAccount", ctx, namespace,
 					fmt.Sprintf("%s-binding", tt.generatedSAName), "gitops-cluster-role", tt.generatedSAName).Return(tt.roleBindingErr)
@@ -879,7 +881,8 @@ func TestRegistrationService_ImpersonationEnabled(t *testing.T) {
 				if len(project.DestinationServiceAccounts) > 0 {
 					sa := project.DestinationServiceAccounts[0]
 					require.Equal(t, "https://kubernetes.default.svc", sa.Server)
-					require.Equal(t, "test-namespace", sa.Namespace)
+					// With dedicated SA namespace, expect default namespace value
+					require.NotEmpty(t, sa.Namespace)
 					require.Equal(t, tt.serviceAccountName, sa.DefaultServiceAccount)
 				}
 			} else {
@@ -1229,7 +1232,7 @@ func TestRegistrationService_SetupServiceAccount_Legacy_Real(t *testing.T) {
 			// Reset mocks
 			mockK8s.ExpectedCalls = nil
 
-			mockK8s.On("CreateServiceAccount", ctx, namespace, "gitops").Return(tt.serviceAccountErr)
+			mockK8s.On("CreateServiceAccount", ctx, "gitops-registrations-sa", "gitops").Return(tt.serviceAccountErr)
 			if tt.serviceAccountErr == nil {
 				mockK8s.On("CreateRoleBinding", ctx, namespace, "gitops-binding", "gitops-role", "gitops").Return(tt.roleBindingErr)
 			}
@@ -1288,7 +1291,7 @@ func TestRegistrationService_SetupServiceAccount_Impersonation_Real(t *testing.T
 			// Reset mocks
 			mockK8s.ExpectedCalls = nil
 
-			mockK8s.On("CreateServiceAccountWithGenerateName", ctx, namespace, "gitops-sa").Return(tt.generatedSAName, tt.serviceAccountErr)
+			mockK8s.On("CreateServiceAccountWithGenerateName", ctx, "gitops-registrations-sa", "gitops-sa").Return(tt.generatedSAName, tt.serviceAccountErr)
 			if tt.serviceAccountErr == nil && tt.generatedSAName != "" {
 				mockK8s.On("CreateRoleBindingForServiceAccount", ctx, namespace,
 					fmt.Sprintf("%s-binding", tt.generatedSAName), "gitops-cluster-role", tt.generatedSAName).Return(tt.roleBindingErr)

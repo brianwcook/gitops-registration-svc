@@ -13,11 +13,12 @@ spec:
       annotations:
         autoscaling.knative.dev/minScale: "1"
         autoscaling.knative.dev/maxScale: "3"
+        serving.knative.dev/disableDigestResolution: "true"
     spec:
       serviceAccountName: gitops-registration-sa
       containers:
       - name: gitops-registration
-        image: quay.io/bcook/gitops-registration:latest
+        image: quay.io/bcook/gitops-registration:dev
         imagePullPolicy: Always
         ports:
         - containerPort: 8080

@@ -54,6 +54,10 @@ echo_success "Prerequisites check passed"
 
 # Create Kind cluster
 echo_info "Creating Kind cluster: $CLUSTER_NAME"
+if lsof -i :8080 -sTCP:LISTEN >/dev/null 2>&1; then
+    echo_warning "Host port 8080 is in use; using HOST_HTTP_PORT=18080 for KIND ingress"
+    export HOST_HTTP_PORT=18080
+fi
 if kind get clusters | grep -q "^$CLUSTER_NAME$"; then
     echo_warning "Cluster $CLUSTER_NAME already exists. Deleting..."
     kind delete cluster --name "$CLUSTER_NAME"

@@ -303,7 +303,7 @@ func TestKubernetesService_UtilityFunctions_EdgeCases(t *testing.T) {
 
 func TestNewKubernetesServiceReal_Constructor(t *testing.T) {
 	logger := logrus.New()
-	cfg := &config.Config{}
+	cfg := &config.Config{Security: config.SecurityConfig{ServiceAccountNamespace: "gitops-registrations-sa"}}
 
 	t.Run("Constructor fails outside Kubernetes cluster", func(t *testing.T) {
 		// When running unit tests outside a Kubernetes cluster,

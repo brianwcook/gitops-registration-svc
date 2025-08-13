@@ -226,7 +226,11 @@ func (r *registrationService) setupServiceAccountWithImpersonation(ctx context.C
 	r.logger.WithField("namespace", namespace).Info("Creating service account with impersonation")
 
 	baseName := r.cfg.Security.Impersonation.ServiceAccountBaseName
-	generatedName, err := r.k8s.CreateServiceAccountWithGenerateName(ctx, namespace, baseName)
+	saNamespace := r.cfg.Security.ServiceAccountNamespace
+	if saNamespace == "" {
+		saNamespace = "gitops-registrations-sa"
+	}
+	generatedName, err := r.k8s.CreateServiceAccountWithGenerateName(ctx, saNamespace, baseName)
 	if err != nil {
 		return "", fmt.Errorf("failed to create service account: %w", err)
 	}
@@ -243,7 +247,11 @@ func (r *registrationService) setupServiceAccountWithImpersonation(ctx context.C
 // setupLegacyServiceAccount creates service account with legacy behavior
 func (r *registrationService) setupLegacyServiceAccount(ctx context.Context, namespace string) (string, error) {
 	serviceAccountName := "gitops"
-	if err := r.k8s.CreateServiceAccount(ctx, namespace, serviceAccountName); err != nil {
+	saNamespace := r.cfg.Security.ServiceAccountNamespace
+	if saNamespace == "" {
+		saNamespace = "gitops-registrations-sa"
+	}
+	if err := r.k8s.CreateServiceAccount(ctx, saNamespace, serviceAccountName); err != nil {
 		return "", fmt.Errorf("failed to create service account: %w", err)
 	}
 
@@ -415,7 +423,11 @@ func (r *registrationService) setupServiceAccountInExistingNamespace(ctx context
 	r.logger.WithField("namespace", namespace).Info("Creating service account in existing namespace")
 
 	serviceAccountName := "gitops"
-	if err := r.k8s.CreateServiceAccount(ctx, namespace, serviceAccountName); err != nil {
+	saNamespace := r.cfg.Security.ServiceAccountNamespace
+	if saNamespace == "" {
+		saNamespace = "gitops-registrations-sa"
+	}
+	if err := r.k8s.CreateServiceAccount(ctx, saNamespace, serviceAccountName); err != nil {
 		return fmt.Errorf("failed to create service account: %w", err)
 	}
 
@@ -549,10 +561,14 @@ func (r *registrationService) buildAppProject(
 
 	// Add impersonation support if enabled
 	if r.cfg.Security.Impersonation.Enabled {
+		saNamespace := r.cfg.Security.ServiceAccountNamespace
+		if saNamespace == "" {
+			saNamespace = "gitops-registrations-sa"
+		}
 		appProject.DestinationServiceAccounts = []types.AppProjectDestinationServiceAccount{
 			{
 				Server:                "https://kubernetes.default.svc",
-				Namespace:             namespace,
+				Namespace:             saNamespace,
 				DefaultServiceAccount: serviceAccountName,
 			},
 		}

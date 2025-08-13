@@ -50,6 +50,9 @@ type SecurityConfig struct {
 	EnableServiceAccountImpersonation bool `yaml:"enableServiceAccountImpersonation"`
 	// New impersonation configuration
 	Impersonation ImpersonationConfig `yaml:"impersonation"`
+	// ServiceAccountNamespace is the dedicated namespace where tenant service accounts are created
+	// Default: "gitops-registrations-sa"
+	ServiceAccountNamespace string `yaml:"serviceAccountNamespace"`
 }
 
 // ImpersonationConfig holds ArgoCD impersonation configuration
@@ -152,6 +155,7 @@ func getDefaultConfig() *Config {
 				ValidatePermissions:    true,
 				AutoCleanup:            true,
 			},
+			ServiceAccountNamespace: "gitops-registrations-sa",
 		},
 		Registration: RegistrationConfig{
 			AllowNewNamespaces: true,

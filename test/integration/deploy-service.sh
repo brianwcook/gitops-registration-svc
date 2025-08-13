@@ -75,6 +75,10 @@ fi
 echo_info "Creating namespace: $NAMESPACE"
 kubectl --context kind-$CLUSTER_NAME create namespace $NAMESPACE --dry-run=client -o yaml | kubectl --context kind-$CLUSTER_NAME apply -f -
 
+# Ensure dedicated ServiceAccount namespace exists for tenant SAs
+echo_info "Ensuring dedicated ServiceAccount namespace exists (gitops-registrations-sa)"
+kubectl --context kind-$CLUSTER_NAME create namespace gitops-registrations-sa --dry-run=client -o yaml | kubectl --context kind-$CLUSTER_NAME apply -f -
+
 # Apply RBAC
 echo_info "Applying RBAC configuration..."
 kubectl --context kind-$CLUSTER_NAME apply -f deploy/rbac.yaml
@@ -141,6 +145,7 @@ spec:
       annotations:
         autoscaling.knative.dev/minScale: "1"
         autoscaling.knative.dev/maxScale: "3"
+        serving.knative.dev/disableDigestResolution: "true"
     spec:
       serviceAccountName: gitops-registration-sa
       containers:
@@ -184,11 +189,67 @@ spec:
           name: gitops-registration-config
 EOF
 
-# Deploy Knative service with the correct image
+# Deploy Knative service using local manifest; override image and pull policy inline
 echo_info "Deploying Knative service..."
-sed -e "s|quay.io/bcook/gitops-registration:latest|$IMAGE_NAME|g" \
-    -e "s|imagePullPolicy: Always|imagePullPolicy: $IMAGE_PULL_POLICY|g" \
-    deploy/knative-service-local.yaml | kubectl --context kind-$CLUSTER_NAME apply -f -
+kubectl --context kind-$CLUSTER_NAME apply -f - <<EOF
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: $SERVICE_NAME
+  namespace: $NAMESPACE
+  labels:
+    app: gitops-registration-service
+spec:
+  template:
+    metadata:
+      labels:
+        app: gitops-registration-service
+      annotations:
+        autoscaling.knative.dev/minScale: "1"
+        autoscaling.knative.dev/maxScale: "3"
+        serving.knative.dev/disableDigestResolution: "true"
+    spec:
+      serviceAccountName: gitops-registration-sa
+      containers:
+      - name: gitops-registration
+        image: $IMAGE_NAME
+        imagePullPolicy: $IMAGE_PULL_POLICY
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        env:
+        - name: LOG_LEVEL
+          value: "info"
+        - name: CONFIG_PATH
+          value: "/etc/config/config.yaml"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        volumeMounts:
+        - name: config
+          mountPath: /etc/config
+          readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          name: gitops-registration-config
+EOF
 
 # Wait for deployment to be ready
 echo_info "Waiting for service to be ready..."

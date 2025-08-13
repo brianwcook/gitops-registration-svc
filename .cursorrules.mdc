@@ -4,19 +4,11 @@ alwaysApply: true
 
 Keep git commit messages informative but succing. Overly verbose messages are not good.
 
+Don't give me directions for how to do things that you can just do for me.
+
 # Cursor Rules for GitOps Registration Service
 
 If the user is using Podman desktop in a VM (like with Mac or Windows) then you cannot reliably use a registry in Kind or load images into the Kind instance. KNative will alwayas try to resolve the image to a digest. In this case ASK THE USER to give you credentials to a registry (like quay.io) where you can store and retrieve built images for using with testing. This can be used with the IMAGE param for the integration-tests target of Make.
-
-Code without integration tests is not "production ready"
-Code must be passing 100% of all tests to be mergeable. anything less than 100% is not good enough.
-
-Your enthusiasm is exhausting. Do not say things like:
-* FANTASTIC SUCCESS! 
-* COMPLETE VICTORY
-* PRODUCTION-READY!
-
-You are nearly always wrong. Report FACTS and drop the hyperbole.
 
 
 ## Git Repository Serving - CRITICAL RULES
@@ -95,6 +87,7 @@ Your enthusiasm is exhausting. Do not say things like:
 
 You are nearly always wrong when you say these things. Report FACTS and drop the hyperbole.
 
+Avoid emojis everywhere except when listing results and then use simple checkmark / X  to show status.
 
 ## Git Repository Serving - CRITICAL RULES
 

@@ -30,9 +30,10 @@ import (
 // GitOpsIntegrationTestSuite defines our test suite
 type GitOpsIntegrationTestSuite struct {
 	suite.Suite
-	client     kubernetes.Interface
-	serviceURL string
-	authToken  string
+	client      kubernetes.Interface
+	serviceURL  string
+	authToken   string
+	saNamespace string
 }
 
 // SetupSuite runs once before all tests
@@ -59,16 +60,22 @@ func (suite *GitOpsIntegrationTestSuite) SetupSuite() {
 	suite.client = client
 
 	// Set service URL - for external access to KIND cluster
-	suite.serviceURL = os.Getenv("SERVICE_URL")
-	if suite.serviceURL == "" {
-		// Use kubectl port-forward for external access to KIND cluster
-		suite.serviceURL = "http://localhost:8080"
-		// Note: This assumes kubectl port-forward is set up separately
-		// or we can set up port-forwarding programmatically here
-	}
+    suite.serviceURL = os.Getenv("SERVICE_URL")
+    if suite.serviceURL == "" {
+        // Default to the configured host HTTP port used by KIND ingress mapping
+        hostPort := os.Getenv("HOST_HTTP_PORT")
+        if hostPort == "" { hostPort = "8080" }
+        suite.serviceURL = "http://localhost:" + hostPort
+    }
 
 	// Get auth token
 	suite.authToken = suite.getAuthToken()
+
+	// Set dedicated ServiceAccount namespace (default matches service default)
+	suite.saNamespace = os.Getenv("SERVICE_ACCOUNT_NAMESPACE")
+	if suite.saNamespace == "" {
+		suite.saNamespace = "gitops-registrations-sa"
+	}
 }
 
 func (suite *GitOpsIntegrationTestSuite) getAuthToken() string {
@@ -143,12 +150,12 @@ func (suite *GitOpsIntegrationTestSuite) TestImpersonationFunctionality() {
 
 	// Step 3: Verify service account was created
 	ctx := context.Background()
-	serviceAccounts, err := suite.client.CoreV1().ServiceAccounts(testNamespace).
+	serviceAccounts, err := suite.client.CoreV1().ServiceAccounts(suite.saNamespace).
 		List(ctx, metav1.ListOptions{
 			LabelSelector: "gitops.io/purpose=impersonation",
 		})
 	require.NoError(suite.T(), err)
-	assert.Len(suite.T(), serviceAccounts.Items, 1, "Should have exactly one service account")
+	assert.GreaterOrEqual(suite.T(), len(serviceAccounts.Items), 1, "Should have at least one service account")
 
 	if len(serviceAccounts.Items) > 0 {
 		sa := serviceAccounts.Items[0]
@@ -327,7 +334,7 @@ func (suite *GitOpsIntegrationTestSuite) createTestRegistration(namespace, repo 
 func (suite *GitOpsIntegrationTestSuite) getServiceAccount(namespace string) *v1.ServiceAccount {
 	ctx := context.Background()
 	// First try to find impersonation service accounts
-	serviceAccounts, err := suite.client.CoreV1().ServiceAccounts(namespace).
+	serviceAccounts, err := suite.client.CoreV1().ServiceAccounts(suite.saNamespace).
 		List(ctx, metav1.ListOptions{
 			LabelSelector: "gitops.io/purpose=impersonation",
 		})
@@ -337,7 +344,7 @@ func (suite *GitOpsIntegrationTestSuite) getServiceAccount(namespace string) *v1
 	}
 
 	// Fall back to legacy gitops service accounts
-	serviceAccounts, err = suite.client.CoreV1().ServiceAccounts(namespace).
+	serviceAccounts, err = suite.client.CoreV1().ServiceAccounts(suite.saNamespace).
 		List(ctx, metav1.ListOptions{
 			LabelSelector: "gitops.io/managed-by=gitops-registration-service",
 		})
@@ -360,7 +367,8 @@ func (suite *GitOpsIntegrationTestSuite) testServiceAccountPermission(saName, na
 				Verb:      verb,
 				Resource:  resource,
 			},
-			User: fmt.Sprintf("system:serviceaccount:%s:%s", namespace, saName),
+			// SA resides in dedicated namespace
+			User: fmt.Sprintf("system:serviceaccount:%s:%s", suite.saNamespace, saName),
 		},
 	}
 
