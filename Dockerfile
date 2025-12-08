@@ -1,5 +1,5 @@
 # Build stage
-FROM registry.access.redhat.com/ubi10-minimal@sha256:4cfec88c16451cc9ce4ba0a8c6109df13d67313a33ff8eb2277d0901b4d81020 AS builder
+FROM registry.access.redhat.com/ubi10-minimal@sha256:a13cec4e2e30fa2ca6468d474d02eb349200dc4a831c8c93f05a2154c559f09b AS builder
 
 # Install build dependencies
 # hadolint ignore=DL3041
@@ -29,7 +29,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
     cmd/server/main.go
 
 # Final stage
-FROM registry.access.redhat.com/ubi10-minimal@sha256:4cfec88c16451cc9ce4ba0a8c6109df13d67313a33ff8eb2277d0901b4d81020
+FROM registry.access.redhat.com/ubi10-minimal@sha256:a13cec4e2e30fa2ca6468d474d02eb349200dc4a831c8c93f05a2154c559f09b
 
 # Install runtime dependencies including user management tools
 # hadolint ignore=DL3041
